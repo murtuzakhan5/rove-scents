@@ -1,0 +1,330 @@
+{
+  "settings": {
+    "storeName": "ROVE SCENTS",
+    "storeSlogan": "SCENT YOUR STORY",
+    "whatsappNumber": "923001234567",
+    "whatsappDisplay": "+92 300 1234567",
+    "contactEmail": "support@rovescents.pk",
+    "announcementText": "✨ FREE NATIONWIDE SHIPPING ON ORDERS OVER RS. 2,500 | CASH ON DELIVERY (COD) AVAILABLE ✨",
+    "heroBadge": "HAUTE PARFUMERIE COLLECTION",
+    "heroTitle": "SCENT YOUR UNFORGETTABLE STORY",
+    "heroSubtitle": "Masterpiece French-grade impressions crafted with 35% pure oil concentration. Exquisite sillage that lingers 14+ hours on skin and fabrics.",
+    "heroBtnText": "SHOP BEST SELLERS",
+    "heroSecondaryBtnText": "EXPLORE RUKH (رخ)",
+    "heroImageUrl": "/images/rove-rukh-banner.jpg",
+    "deliveryCharge": 200,
+    "freeDeliveryThreshold": 2500,
+    "bankDetails": "Bank: Meezan Bank Ltd\nAccount Title: ROVE SCENTS\nAccount Number: 0102-0103487591\nIBAN: PK65MEZN0001020103487591\nNayapay/Sadapay: 03001234567"
+  },
+  "categories": [
+    {
+      "id": "all",
+      "name": "All Perfumes",
+      "image": "/images/cat-all.jpg"
+    },
+    {
+      "id": "men",
+      "name": "Men's Luxury",
+      "image": "/images/cat-men.jpg"
+    },
+    {
+      "id": "women",
+      "name": "Women's Signatures",
+      "image": "/images/cat-women.jpg"
+    },
+    {
+      "id": "unisex",
+      "name": "Unisex Extrait",
+      "image": "/images/cat-unisex.jpg"
+    },
+    {
+      "id": "attars",
+      "name": "Pure Royal Attars",
+      "image": "/images/cat-all.jpg"
+    }
+  ],
+  "products": [
+    {
+      "id": "prod-rukh",
+      "name": "ROVE RUKH (رخ)",
+      "slug": "rove-rukh-eau-de-parfum",
+      "category": "men",
+      "gender": "Men",
+      "inspiredBy": "Signature Haute Creation • Amber, White Florals & Iris",
+      "price": 2650,
+      "comparePrice": 3950,
+      "stock": 45,
+      "featured": true,
+      "badge": "FLAGSHIP EAU DE PARFUM",
+      "bottleSize": "50ml Eau De Parfum",
+      "rating": 5,
+      "reviewsCount": 164,
+      "image": "/images/bottle-rukh.jpg",
+      "galleryImages": [
+        "/images/bottle-rukh.jpg",
+        "/images/rove-rukh-banner.jpg",
+        "/images/rove-all-collection-banner.jpg"
+      ],
+      "shortDesc": "The pinnacle of masculine refinement. Golden liquid in crystalline glass with Italian Bergamot, White Florals, and Smoked Amber.",
+      "description": "ROVE RUKH (رخ) is our flagship creation. Encased in heavyweight crystalline glass with polished 24K gold accents, RUKH opens with zesty Italian bergamot and spicy cardamom, blooming into opulent Tuscan iris and white jasmine, before settling onto a majestic base of smoked golden amber, vetiver, and royal sandalwood. Over 16 hours of magnetic longevity.",
+      "topNotes": "Italian Bergamot, Cardamom, Crisp Apple",
+      "heartNotes": "Tuscan Iris, White Jasmine, Pink Peppercorn",
+      "baseNotes": "Smoked Amber, Royal Sandalwood, Cashmere Wood, Vetiver",
+      "longevity": "16+ Hours",
+      "sillage": "Commanding & Magnetic",
+      "season": "All Season Signature"
+    },
+    {
+      "id": "prod-raaz",
+      "name": "ROVE RAAZ (راز)",
+      "slug": "rove-raaz-eau-de-parfum",
+      "category": "women",
+      "gender": "Women",
+      "inspiredBy": "Sensual Black Gold Mystery • White Florals, Cashmere & Dark Vanilla",
+      "price": 2650,
+      "comparePrice": 3950,
+      "stock": 40,
+      "featured": true,
+      "badge": "SIGNATURE WOMEN",
+      "bottleSize": "50ml Eau De Parfum",
+      "rating": 5,
+      "reviewsCount": 142,
+      "image": "/images/bottle-raaz.jpg",
+      "galleryImages": [
+        "/images/bottle-raaz.jpg",
+        "/images/rove-raaz-banner.jpg",
+        "/images/rove-all-collection-banner.jpg"
+      ],
+      "shortDesc": "An enigmatic feminine elixir. White blossom petals and warm golden nectar wrapped in velvet black marble mystery.",
+      "description": "ROVE RAAZ (راز) captures the untamed secret of supreme elegance. Enveloped in mysterious dark gold aesthetics, this Eau De Parfum unfolds with luminous solar florals and delicate white petals, cascading into a deep sensual core of roasted tonka, creamy cashmere wood, and dark royal vanilla. Pure magnetic charm.",
+      "topNotes": "White Blossoms, Golden Mandarin, Dewy Freesia",
+      "heartNotes": "Velvet Jasmine, Cashmere Orchid, Soft Almond",
+      "baseNotes": "Dark Madagascar Vanilla, Rich Amber, Golden Sandalwood",
+      "longevity": "15+ Hours",
+      "sillage": "Enchanting Sillage",
+      "season": "Evening / Winter / Glamour"
+    },
+    {
+      "id": "prod-afsana",
+      "name": "ROVE AFSANA (افسانہ)",
+      "slug": "rove-afsana-eau-de-parfum",
+      "category": "women",
+      "gender": "Women",
+      "inspiredBy": "Romantic Golden Sunset • Sweet Peaches, Pink Berries & Rose Petals",
+      "price": 2650,
+      "comparePrice": 3950,
+      "stock": 38,
+      "featured": true,
+      "badge": "ROMANTIC FLORAL",
+      "bottleSize": "50ml Eau De Parfum",
+      "rating": 5,
+      "reviewsCount": 129,
+      "image": "/images/bottle-afsana.jpg",
+      "galleryImages": [
+        "/images/bottle-afsana.jpg",
+        "/images/rove-afsana-banner.jpg",
+        "/images/rove-all-collection-banner.jpg"
+      ],
+      "shortDesc": "A tale of unforgettable romance. Sun-ripened golden peaches, wild berries, and fresh pink roses bathed in golden hour light.",
+      "description": "ROVE AFSANA (افسانہ) tells a poetic love story in scent. Bursting with succulent sun-kissed peaches and sweet ruby berries at the golden hour, dancing with exquisite Damask rose petals, and drying down to warm amber spun sugar and white musk. Soft, irresistible, and endlessly captivating.",
+      "topNotes": "Sun-Kissed Peach, Wild Forest Berries, Bergamot",
+      "heartNotes": "Damask Pink Rose, Solar Magnolia, Peony Petals",
+      "baseNotes": "Spun Amber Sugar, White Musk, Soft Cedarwood",
+      "longevity": "14+ Hours",
+      "sillage": "Sweet & Radiantly Alluring",
+      "season": "Spring / Summer / Dates"
+    },
+    {
+      "id": "prod-naz",
+      "name": "ROVE NAZ (ناز)",
+      "slug": "rove-naz-eau-de-parfum",
+      "category": "women",
+      "gender": "Women",
+      "inspiredBy": "Celestial White Floral Silk • Magnolia, Bergamot & Cashmere Musk",
+      "price": 2650,
+      "comparePrice": 3950,
+      "stock": 35,
+      "featured": true,
+      "badge": "NEW RELEASE",
+      "bottleSize": "50ml Eau De Parfum",
+      "rating": 5,
+      "reviewsCount": 98,
+      "image": "/uploads/perfume-1791839204180-939604790.jpeg",
+      "galleryImages": [
+        "/images/bottle-naz.jpg",
+        "/images/rove-all-collection-banner.jpg"
+      ],
+      "shortDesc": "Ethereal purity and feminine pride. Sparkling magnolia, crisp white flowers, and soft velvet silk musk.",
+      "description": "ROVE NAZ (ناز) is an ode to pure grace. Delicate crisp citrus opening leads into an ethereal bouquet of royal white gardenia, soft jasmine petals, and cashmere woods that embrace you like pure cashmere.",
+      "topNotes": "Italian Bergamot, White Blossom, Pear",
+      "heartNotes": "Solar Magnolia, Damask Petals, Jasmine",
+      "baseNotes": "Velvet Musk, Amberwood, Soft Cedar",
+      "longevity": "14+ Hours",
+      "sillage": "Graceful & Ethereal",
+      "season": "Spring / Summer / All Day"
+    }
+  ],
+  "coupons": [
+    {
+      "code": "ROVE10",
+      "discountType": "percentage",
+      "value": 10,
+      "minOrder": 2000,
+      "description": "10% Flat Discount on orders over Rs. 2,000",
+      "active": true
+    },
+    {
+      "code": "ROVE500",
+      "discountType": "fixed",
+      "value": 500,
+      "minOrder": 4000,
+      "description": "Rs. 500 Off on orders above Rs. 4,000",
+      "active": true
+    },
+    {
+      "code": "WELCOME",
+      "discountType": "percentage",
+      "value": 15,
+      "minOrder": 2500,
+      "description": "15% Special Welcome Discount",
+      "active": true
+    }
+  ],
+  "orders": [
+    {
+      "id": "ROVE-98421",
+      "date": "2026-10-12T14:30:00Z",
+      "customerName": "Hamza Tariq",
+      "phone": "03008456123",
+      "email": "hamza.tariq@gmail.com",
+      "city": "Lahore",
+      "address": "House 45, Sector Y, DHA Phase 3",
+      "paymentMethod": "COD",
+      "items": [
+        {
+          "productId": "prod-1",
+          "name": "ROVE Imperial Oud",
+          "size": "50ml Extrait De Parfum",
+          "price": 2450,
+          "quantity": 1
+        },
+        {
+          "productId": "prod-3",
+          "name": "ROVE Sauvage Noir",
+          "size": "50ml Extrait De Parfum",
+          "price": 2350,
+          "quantity": 1
+        }
+      ],
+      "subtotal": 4800,
+      "discount": 480,
+      "couponCode": "ROVE10",
+      "deliveryCharge": 0,
+      "total": 4320,
+      "status": "Confirmed",
+      "notes": "Please call before delivery"
+    },
+    {
+      "id": "ROVE-98420",
+      "date": "2026-10-12T11:15:00Z",
+      "customerName": "Ayesha Khan",
+      "phone": "03217654321",
+      "email": "ayesha.k@hotmail.com",
+      "city": "Karachi",
+      "address": "Apartment 4B, Clifton Block 5",
+      "paymentMethod": "COD",
+      "items": [
+        {
+          "productId": "prod-2",
+          "name": "ROVE Velvet Rouge 540",
+          "size": "50ml Extrait De Parfum",
+          "price": 2750,
+          "quantity": 1
+        }
+      ],
+      "subtotal": 2750,
+      "discount": 0,
+      "couponCode": "",
+      "deliveryCharge": 0,
+      "total": 2750,
+      "status": "Shipped",
+      "notes": "Deliver in afternoon"
+    },
+    {
+      "id": "ROVE-98419",
+      "date": "2026-10-11T19:40:00Z",
+      "customerName": "Zain ul Abideen",
+      "phone": "03335123987",
+      "email": "zain.abideen@outlook.com",
+      "city": "Islamabad",
+      "address": "Street 12, F-7/2",
+      "paymentMethod": "Bank Transfer",
+      "items": [
+        {
+          "productId": "prod-9",
+          "name": "ROVE Royal Discovery Box (5x 10ml)",
+          "size": "5 x 10ml Luxury Atomizers",
+          "price": 2990,
+          "quantity": 1
+        }
+      ],
+      "subtotal": 2990,
+      "discount": 0,
+      "couponCode": "",
+      "deliveryCharge": 0,
+      "total": 2990,
+      "status": "Delivered",
+      "notes": "Paid via Raast"
+    }
+  ],
+  "reviews": [
+    {
+      "id": "rev-1",
+      "productId": "prod-1",
+      "author": "Bilal Ahmed",
+      "city": "Lahore",
+      "rating": 5,
+      "date": "2026-10-10",
+      "title": "Bhai kya scent hai! 14 ghante pakka chal raha hai",
+      "comment": "Elyscents se bhi pehle try kiya tha, but ROVE Imperial Oud projection is on another level. Kapron par agle din tak smell rehti hai. Packing is 10/10 luxury black gold box. 100% recommended!",
+      "verified": true,
+      "approved": true
+    },
+    {
+      "id": "rev-2",
+      "productId": "prod-2",
+      "author": "Mahnoor Malik",
+      "city": "Islamabad",
+      "rating": 5,
+      "date": "2026-10-09",
+      "title": "Exact Baccarat Rouge vibe, so many compliments!",
+      "comment": "I am so in love with Velvet Rouge 540! Office mein sab poch rahe hain konsa perfume lagaya hai. Sweet saffron and airy ambergris. Will definitely order full bottles again.",
+      "verified": true,
+      "approved": true
+    },
+    {
+      "id": "rev-3",
+      "productId": "prod-3",
+      "author": "Shahzaib Butt",
+      "city": "Karachi",
+      "rating": 5,
+      "date": "2026-10-08",
+      "title": "Sauvage Elixir ka perfect alternate",
+      "comment": "Delivery Karachi mein 2 din mein mil gayi through COD. Packaging bhot solid hai bottle leak nahi hui. Fragrance projection is beast mode.",
+      "verified": true,
+      "approved": true
+    },
+    {
+      "id": "rev-4",
+      "productId": "prod-4",
+      "author": "Komal Rizvi",
+      "city": "Faisalabad",
+      "rating": 5,
+      "date": "2026-10-06",
+      "title": "Fresh floral and gardenia notes are gorgeous",
+      "comment": "Very feminine, soft gardenia and subtle sweetness. Delivery was fast and cash on delivery was super smooth. Thank you ROVE Scents!",
+      "verified": true,
+      "approved": true
+    }
+  ]
+}
