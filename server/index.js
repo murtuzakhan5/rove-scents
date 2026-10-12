@@ -340,18 +340,20 @@ app.post('/api/auth/login', (req, res) => {
   res.status(401).json({ success: false, message: 'Invalid admin credentials' });
 });
 
-// Production: serve built static files if dist exists
+// Production: serve built static files if dist exists (for local or traditional hosting)
 const distPath = path.join(rootDir, 'dist');
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(distPath, 'index.html'));
+}
+
+// Only listen on port if executed directly (not when imported by Vercel serverless functions)
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`\n======================================================`);
+    console.log(`  ROVE SCENTS Server running on http://localhost:${PORT}`);
+    console.log(`  Admin credentials: Username: admin | Password: admin123`);
+    console.log(`======================================================\n`);
   });
 }
 
-app.listen(PORT, () => {
-  console.log(`\n======================================================`);
-  console.log(`  ROVE SCENTS Server running on http://localhost:${PORT}`);
-  console.log(`  Admin credentials: Username: admin | Password: admin123`);
-  console.log(`======================================================\n`);
-});
+export default app;
