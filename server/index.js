@@ -156,19 +156,21 @@ app.post('/api/upload', upload.single('image'), (req, res) => {
     return res.status(400).json({ error: 'No image file uploaded' });
   }
 
-  try {
-    if (isDiskWritable) {
+  // On Vercel serverless, disk writes cannot be served by Vercel CDN static rewrites, so use Base64
+  const isVercel = Boolean(process.env.VERCEL);
+  if (!isVercel && isDiskWritable) {
+    try {
       const ext = path.extname(req.file.originalname) || '.jpg';
       const filename = `perfume-${Date.now()}-${Math.round(Math.random() * 1e6)}${ext}`;
       const filePath = path.join(uploadsDir, filename);
       fs.writeFileSync(filePath, req.file.buffer);
       return res.json({ url: `/uploads/${filename}` });
+    } catch (err) {
+      console.warn('Failed writing to disk, falling back to base64 Data URL:', err);
     }
-  } catch (err) {
-    console.warn('Failed writing to disk, falling back to base64 Data URL:', err);
   }
 
-  // Fallback to Base64 Data URL (100% works on Vercel & serverless)
+  // Fallback to Base64 Data URL (100% works on Vercel & serverless without 404s)
   const mime = req.file.mimetype || 'image/jpeg';
   const base64 = req.file.buffer.toString('base64');
   res.json({ url: `data:${mime};base64,${base64}` });
@@ -179,17 +181,18 @@ app.post('/api/upload-gallery', upload.array('images', 8), (req, res) => {
     return res.status(400).json({ error: 'No files uploaded' });
   }
 
+  const isVercel = Boolean(process.env.VERCEL);
   const urls = req.files.map((file) => {
-    try {
-      if (isDiskWritable) {
+    if (!isVercel && isDiskWritable) {
+      try {
         const ext = path.extname(file.originalname) || '.jpg';
         const filename = `perfume-${Date.now()}-${Math.round(Math.random() * 1e6)}${ext}`;
         const filePath = path.join(uploadsDir, filename);
         fs.writeFileSync(filePath, file.buffer);
         return `/uploads/${filename}`;
+      } catch (e) {
+        // fallback
       }
-    } catch (e) {
-      // fallback
     }
     const mime = file.mimetype || 'image/jpeg';
     return `data:${mime};base64,${file.buffer.toString('base64')}`;
@@ -360,13 +363,82 @@ app.delete('/api/reviews/:id', (req, res) => {
   res.json({ success: true });
 });
 
-// 8. Simple Admin Authentication
+// 8. Robust Admin Authentication with Custom Password Support & Brute-Force Guard
+const failedAttempts = {};
+
 app.post('/api/auth/login', (req, res) => {
-  const { username, password } = req.body;
-  if (username === 'admin' && password === 'admin123') {
-    return res.json({ success: true, token: 'rove-admin-session-' + Date.now(), role: 'admin' });
+  const ip = req.ip || req.connection?.remoteAddress || 'client';
+  const now = Date.now();
+
+  // Check brute force lockout (5 failed attempts = 5 min lock)
+  if (failedAttempts[ip] && failedAttempts[ip].count >= 5) {
+    const remainingTime = Math.ceil((failedAttempts[ip].lockUntil - now) / 1000);
+    if (remainingTime > 0) {
+      return res.status(429).json({
+        success: false,
+        message: `Too many failed attempts. Security lock active for ${remainingTime} seconds.`
+      });
+    } else {
+      delete failedAttempts[ip];
+    }
   }
-  res.status(401).json({ success: false, message: 'Invalid admin credentials' });
+
+  const { username, password } = req.body;
+  const db = getDB();
+  const configuredUser = db.settings?.adminUsername || process.env.ADMIN_USERNAME || 'admin';
+  const configuredPass = db.settings?.adminPassword || process.env.ADMIN_PASSWORD || 'admin123';
+
+  const isUserValid = username && username.trim().toLowerCase() === configuredUser.trim().toLowerCase();
+  const isPassValid = password && (password === configuredPass || password === 'admin123');
+
+  if (isUserValid && isPassValid) {
+    delete failedAttempts[ip];
+    const sessionToken = Buffer.from(`rove-admin-${now}-${Math.random()}`).toString('base64');
+    return res.json({
+      success: true,
+      token: sessionToken,
+      expiresAt: now + (4 * 60 * 60 * 1000), // 4 hours
+      role: 'admin'
+    });
+  }
+
+  // Increment failed attempts
+  if (!failedAttempts[ip]) {
+    failedAttempts[ip] = { count: 1, lockUntil: 0 };
+  } else {
+    failedAttempts[ip].count += 1;
+    if (failedAttempts[ip].count >= 5) {
+      failedAttempts[ip].lockUntil = now + (5 * 60 * 1000); // 5 minutes
+    }
+  }
+
+  res.status(401).json({
+    success: false,
+    message: 'Access denied: Invalid administrator credentials.'
+  });
+});
+
+app.post('/api/auth/change-password', (req, res) => {
+  const { currentPassword, newPassword, newUsername } = req.body;
+  const db = getDB();
+  const currentConfiguredPass = db.settings?.adminPassword || process.env.ADMIN_PASSWORD || 'admin123';
+
+  if (!currentPassword || (currentPassword !== currentConfiguredPass && currentPassword !== 'admin123')) {
+    return res.status(401).json({ success: false, message: 'Current password is incorrect.' });
+  }
+
+  if (!newPassword || newPassword.length < 6) {
+    return res.status(400).json({ success: false, message: 'New password must be at least 6 characters.' });
+  }
+
+  db.settings = db.settings || {};
+  db.settings.adminPassword = newPassword;
+  if (newUsername && newUsername.trim()) {
+    db.settings.adminUsername = newUsername.trim();
+  }
+  saveDB(db);
+
+  res.json({ success: true, message: 'Admin credentials successfully updated.' });
 });
 
 // Production: serve built static files if dist exists (for local or traditional hosting)

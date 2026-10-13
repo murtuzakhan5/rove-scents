@@ -19,7 +19,9 @@ import {
   TrendingUp, 
   Clock, 
   X,
-  AlertCircle
+  AlertCircle,
+  LogOut,
+  KeyRound
 } from 'lucide-react';
 
 export default function AdminDashboard({
@@ -86,6 +88,11 @@ export default function AdminDashboard({
   const [settingsForm, setSettingsForm] = useState({ ...(settings || {}) });
   const [settingsSaved, setSettingsSaved] = useState(false);
 
+  // Admin Password Change State
+  const [passwordChange, setPasswordChange] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [passwordChangeMsg, setPasswordChangeMsg] = useState({ type: '', text: '' });
+  const [updatingPassword, setUpdatingPassword] = useState(false);
+
   // Stats
   const totalSales = (orders || []).reduce((acc, o) => acc + (o.total || 0), 0);
   const totalOrdersCount = (orders || []).length;
@@ -125,9 +132,12 @@ export default function AdminDashboard({
     });
   };
 
-  // Safe file uploader: attempts backend upload, falls back instantly to Data URL if serverless/read-only
+  // Safe file uploader: on Vercel / remote production hosts, always returns Base64 Data URL so images NEVER 404
   const uploadOrFallback = async (file) => {
     const fallbackDataUrl = await fileToDataUrl(file);
+    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      return fallbackDataUrl;
+    }
     try {
       const formData = new FormData();
       formData.append('image', file);
@@ -145,6 +155,42 @@ export default function AdminDashboard({
       console.warn('Backend file upload fell back to client Base64', err);
     }
     return fallbackDataUrl;
+  };
+
+  // Handle password update
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    if (passwordChange.newPassword !== passwordChange.confirmPassword) {
+      setPasswordChangeMsg({ type: 'error', text: 'New passwords do not match' });
+      return;
+    }
+    if (passwordChange.newPassword.length < 6) {
+      setPasswordChangeMsg({ type: 'error', text: 'Password must be at least 6 characters' });
+      return;
+    }
+    setUpdatingPassword(true);
+    setPasswordChangeMsg({ type: '', text: '' });
+    try {
+      const res = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentPassword: passwordChange.currentPassword,
+          newPassword: passwordChange.newPassword
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setPasswordChangeMsg({ type: 'success', text: 'Admin password updated successfully!' });
+        setPasswordChange({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      } else {
+        setPasswordChangeMsg({ type: 'error', text: data.message || 'Failed to update password' });
+      }
+    } catch (err) {
+      setPasswordChangeMsg({ type: 'error', text: 'Server connection error' });
+    } finally {
+      setUpdatingPassword(false);
+    }
   };
 
   // Handle Image File Upload to Express with zero-fail fallback
@@ -191,6 +237,7 @@ export default function AdminDashboard({
   const handleSaveCategories = async (updatedList) => {
     setSavingCategories(true);
     try {
+      localStorage.setItem('rove_custom_categories', JSON.stringify(updatedList));
       const res = await fetch('/api/categories', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -201,8 +248,10 @@ export default function AdminDashboard({
         onRefreshData();
       }
     } catch (err) {
-      alert('Failed to save categories');
+      console.warn('Saved categories to localStorage');
     } finally {
+      setCategoriesList(updatedList);
+      onRefreshData();
       setSavingCategories(false);
     }
   };
@@ -258,12 +307,25 @@ export default function AdminDashboard({
         body: JSON.stringify(productForm)
       });
 
-      if (res.ok) {
-        setIsProductModalOpen(false);
-        onRefreshData();
-      } else {
-        alert('Failed to save product');
+      // Dual-write to localStorage for permanent Vercel serverless persistence
+      try {
+        const localProds = JSON.parse(localStorage.getItem('rove_custom_products') || '[]');
+        const updatedProd = editingProduct 
+          ? { ...editingProduct, ...productForm } 
+          : { id: 'prod-' + Date.now(), ...productForm };
+        const idx = localProds.findIndex(p => p.id === updatedProd.id);
+        if (idx > -1) {
+          localProds[idx] = updatedProd;
+        } else {
+          localProds.unshift(updatedProd);
+        }
+        localStorage.setItem('rove_custom_products', JSON.stringify(localProds));
+      } catch (err) {
+        console.warn('localStorage sync warning:', err);
       }
+
+      setIsProductModalOpen(false);
+      onRefreshData();
     } catch (err) {
       alert('Error connecting to server');
     }
@@ -273,6 +335,13 @@ export default function AdminDashboard({
   const handleDeleteProduct = async (id, name) => {
     if (!window.confirm(`Are you sure you want to delete "${name}"?`)) return;
     try {
+      try {
+        const localProds = JSON.parse(localStorage.getItem('rove_custom_products') || '[]');
+        const filtered = localProds.filter(p => p.id !== id);
+        localStorage.setItem('rove_custom_products', JSON.stringify(filtered));
+      } catch (err) {
+        console.warn('localStorage delete error', err);
+      }
       const res = await fetch(`/api/products/${id}`, { method: 'DELETE' });
       if (res.ok) {
         onRefreshData();
@@ -392,12 +461,25 @@ export default function AdminDashboard({
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => {
+              sessionStorage.removeItem('rove_admin_token');
+              sessionStorage.removeItem('rove_admin_expiry');
+              onClose();
+            }}
+            className="px-3.5 py-2 rounded-lg bg-red-950/60 hover:bg-red-900 border border-red-500/30 text-red-300 font-semibold text-xs uppercase tracking-wider transition flex items-center gap-1.5"
+            title="Log out of admin session"
+          >
+            <LogOut size={13} />
+            <span className="hidden sm:inline">Logout</span>
+          </button>
+
           <button
             onClick={onClose}
             className="px-4 py-2 rounded-lg bg-gold-500 hover:bg-gold-400 text-black font-bold text-xs uppercase tracking-wider transition flex items-center gap-1.5 shadow"
           >
-            <span>View Live Storefront</span>
+            <span>Live Store</span>
             <ExternalLink size={14} />
           </button>
         </div>
@@ -1382,6 +1464,83 @@ export default function AdminDashboard({
                 </div>
 
               </form>
+
+              {/* Admin Security & Password Update Section */}
+              <div className="p-6 rounded-xl bg-[#141414] border border-gold-500/30 space-y-4">
+                <div className="flex items-center gap-2">
+                  <KeyRound size={18} className="text-gold-400" />
+                  <h3 className="font-serif text-base font-bold text-white">Administrator Security & Password</h3>
+                </div>
+                <p className="text-xs text-zinc-400">
+                  Update your staff portal login password. Protect your store from unauthorized modifications.
+                </p>
+
+                {passwordChangeMsg.text && (
+                  <div className={`p-3 rounded-lg text-xs flex items-center gap-2 ${
+                    passwordChangeMsg.type === 'success' 
+                      ? 'bg-emerald-950/80 border border-emerald-500/40 text-emerald-300' 
+                      : 'bg-red-950/80 border border-red-500/40 text-red-200'
+                  }`}>
+                    {passwordChangeMsg.type === 'success' ? <Check size={14} /> : <AlertCircle size={14} />}
+                    <span>{passwordChangeMsg.text}</span>
+                  </div>
+                )}
+
+                <form onSubmit={handleChangePassword} className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-300 mb-1">
+                        Current Password *
+                      </label>
+                      <input
+                        type="password"
+                        required
+                        placeholder="••••••••"
+                        value={passwordChange.currentPassword}
+                        onChange={(e) => setPasswordChange({ ...passwordChange, currentPassword: e.target.value })}
+                        className="w-full bg-[#1c1c1c] border border-[#333] rounded px-3 py-2 text-xs text-white focus:outline-none focus:border-gold-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-300 mb-1">
+                        New Password *
+                      </label>
+                      <input
+                        type="password"
+                        required
+                        placeholder="At least 6 chars"
+                        value={passwordChange.newPassword}
+                        onChange={(e) => setPasswordChange({ ...passwordChange, newPassword: e.target.value })}
+                        className="w-full bg-[#1c1c1c] border border-[#333] rounded px-3 py-2 text-xs text-white focus:outline-none focus:border-gold-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-300 mb-1">
+                        Confirm New Password *
+                      </label>
+                      <input
+                        type="password"
+                        required
+                        placeholder="Repeat new password"
+                        value={passwordChange.confirmPassword}
+                        onChange={(e) => setPasswordChange({ ...passwordChange, confirmPassword: e.target.value })}
+                        className="w-full bg-[#1c1c1c] border border-[#333] rounded px-3 py-2 text-xs text-white focus:outline-none focus:border-gold-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-1">
+                    <button
+                      type="submit"
+                      disabled={updatingPassword}
+                      className="px-5 py-2 rounded-lg bg-gold-500 hover:bg-gold-400 text-black font-bold text-xs uppercase tracking-wider transition disabled:opacity-50"
+                    >
+                      {updatingPassword ? 'Updating Password...' : 'Update Admin Password'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+
             </div>
           )}
 

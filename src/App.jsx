@@ -56,7 +56,7 @@ export default function App() {
     localStorage.setItem('rove_cart', JSON.stringify(cartItems));
   }, [cartItems]);
 
-  // Fetch all data from Express API
+  // Fetch all data from Express API with localStorage persistence bridge
   const fetchData = async () => {
     try {
       const [resSet, resCat, resProd, resOrd, resCoup, resRev] = await Promise.all([
@@ -67,9 +67,34 @@ export default function App() {
         fetch('/api/coupons').then(r => r.json()),
         fetch('/api/reviews').then(r => r.json())
       ]);
+
+      // Vercel serverless persistence bridge: merge local custom items
+      let mergedProducts = Array.isArray(resProd) ? [...resProd] : [];
+      try {
+        const localCustomProds = JSON.parse(localStorage.getItem('rove_custom_products') || '[]');
+        if (localCustomProds.length > 0) {
+          localCustomProds.forEach(lp => {
+            const idx = mergedProducts.findIndex(p => p.id === lp.id);
+            if (idx > -1) {
+              mergedProducts[idx] = lp;
+            } else {
+              mergedProducts.unshift(lp);
+            }
+          });
+        }
+      } catch (e) {}
+
+      let mergedCats = Array.isArray(resCat) && resCat.length > 0 ? [...resCat] : [];
+      try {
+        const localCustomCats = JSON.parse(localStorage.getItem('rove_custom_categories') || '[]');
+        if (localCustomCats.length > 0) {
+          mergedCats = localCustomCats;
+        }
+      } catch (e) {}
+
       setSettings(resSet);
-      setCategories(resCat);
-      setProducts(resProd);
+      setCategories(mergedCats);
+      setProducts(mergedProducts);
       setOrders(resOrd);
       setCoupons(resCoup);
       setReviews(resRev);

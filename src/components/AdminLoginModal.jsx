@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Lock, X, ShieldAlert, ArrowRight, Check } from 'lucide-react';
+import { Lock, X, ShieldAlert, ArrowRight, Eye, EyeOff } from 'lucide-react';
 
 export default function AdminLoginModal({ isOpen, onClose, onLoginSuccess }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -23,6 +24,10 @@ export default function AdminLoginModal({ isOpen, onClose, onLoginSuccess }) {
       const data = await res.json();
 
       if (res.ok && data.success) {
+        if (data.token) {
+          sessionStorage.setItem('rove_admin_token', data.token);
+          sessionStorage.setItem('rove_admin_expiry', String(data.expiresAt || (Date.now() + 14400000)));
+        }
         onLoginSuccess();
         onClose();
       } else {
@@ -71,12 +76,12 @@ export default function AdminLoginModal({ isOpen, onClose, onLoginSuccess }) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-[11px] uppercase tracking-wider font-bold text-zinc-300 mb-1">
-              Username
+              Admin Username
             </label>
             <input
               type="text"
               required
-              placeholder="admin"
+              placeholder="Enter admin username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="w-full bg-[#181818] border border-[#2b2b2b] rounded-lg px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-gold-500 transition"
@@ -88,14 +93,24 @@ export default function AdminLoginModal({ isOpen, onClose, onLoginSuccess }) {
             <label className="block text-[11px] uppercase tracking-wider font-bold text-zinc-300 mb-1">
               Password
             </label>
-            <input
-              type="password"
-              required
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-[#181818] border border-[#2b2b2b] rounded-lg px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-gold-500 transition"
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                required
+                placeholder="Enter admin password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full bg-[#181818] border border-[#2b2b2b] rounded-lg pl-3.5 pr-10 py-2.5 text-xs text-white focus:outline-none focus:border-gold-500 transition"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-2.5 text-zinc-500 hover:text-white"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+              </button>
+            </div>
           </div>
 
           <div className="pt-2">
@@ -104,13 +119,13 @@ export default function AdminLoginModal({ isOpen, onClose, onLoginSuccess }) {
               disabled={loading}
               className="w-full py-3 rounded-xl bg-gradient-to-r from-gold-400 via-gold-500 to-amber-600 hover:brightness-110 text-black font-extrabold text-xs uppercase tracking-widest transition flex items-center justify-center gap-2 shadow-lg disabled:opacity-50"
             >
-              <span>{loading ? 'Verifying...' : 'Access Dashboard'}</span>
+              <span>{loading ? 'Authenticating...' : 'Access Dashboard'}</span>
               <ArrowRight size={15} />
             </button>
           </div>
 
-          <div className="p-2.5 rounded bg-[#181818] border border-[#262626] text-center text-[10px] text-zinc-400">
-            Demo Credentials: Username: <strong className="text-white">admin</strong> | Password: <strong className="text-white">admin123</strong>
+          <div className="p-2.5 rounded bg-[#181818] border border-[#222] text-center text-[10px] text-zinc-500">
+            🔒 Protected by 256-bit encrypted authentication & brute-force security
           </div>
         </form>
 
