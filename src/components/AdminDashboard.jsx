@@ -67,6 +67,7 @@ export default function AdminDashboard({
   // Category Editor State
   const [categoriesList, setCategoriesList] = useState(categories || []);
   const [newCategory, setNewCategory] = useState({ id: '', name: '', image: '/images/cat-all.jpg' });
+  const [editingCategory, setEditingCategory] = useState(null);
   const [savingCategories, setSavingCategories] = useState(false);
 
   // Orders Filter
@@ -91,58 +92,96 @@ export default function AdminDashboard({
   const pendingOrdersCount = (orders || []).filter(o => o.status === 'Pending').length;
   const confirmedOrdersCount = (orders || []).filter(o => o.status === 'Confirmed' || o.status === 'Shipped').length;
 
-  // Handle Image File Upload to Express
-  const handleFileUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+  // Compress and read image file to high-efficiency Base64 Data URL
+  const fileToDataUrl = (file, maxWidth = 1200, maxHeight = 1200, quality = 0.85) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          let width = img.width;
+          let height = img.height;
+          if (width > maxWidth || height > maxHeight) {
+            if (width > height) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            } else {
+              width = Math.round((width * maxHeight) / height);
+              maxHeight = height;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = () => resolve(e.target.result);
+        img.src = e.target.result;
+      };
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(file);
+    });
+  };
 
-    const formData = new FormData();
-    formData.append('image', file);
-
-    setUploadingImage(true);
+  // Safe file uploader: attempts backend upload, falls back instantly to Data URL if serverless/read-only
+  const uploadOrFallback = async (file) => {
+    const fallbackDataUrl = await fileToDataUrl(file);
     try {
+      const formData = new FormData();
+      formData.append('image', file);
       const res = await fetch('/api/upload', {
         method: 'POST',
         body: formData
       });
-      const data = await res.json();
-      if (res.ok && data.url) {
-        setProductForm(prev => ({ ...prev, image: data.url }));
-      } else {
-        alert('Upload failed: ' + (data.error || 'Server error'));
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.url) {
+          return data.url;
+        }
       }
     } catch (err) {
-      alert('Error uploading file');
+      console.warn('Backend file upload fell back to client Base64', err);
+    }
+    return fallbackDataUrl;
+  };
+
+  // Handle Image File Upload to Express with zero-fail fallback
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    try {
+      const url = await uploadOrFallback(file);
+      if (url) {
+        setProductForm(prev => ({ ...prev, image: url }));
+      }
+    } catch (err) {
+      console.error('File upload error:', err);
     } finally {
       setUploadingImage(false);
     }
   };
 
-  // Handle Multi-file Gallery Upload
+  // Handle Multi-file Gallery Upload with zero-fail fallback
   const handleGalleryUpload = async (e) => {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
 
-    const formData = new FormData();
-    files.forEach(f => formData.append('images', f));
-
     setUploadingGallery(true);
     try {
-      const res = await fetch('/api/upload-gallery', {
-        method: 'POST',
-        body: formData
-      });
-      const data = await res.json();
-      if (res.ok && data.urls) {
+      const urls = await Promise.all(files.map(f => uploadOrFallback(f)));
+      const validUrls = urls.filter(Boolean);
+      if (validUrls.length > 0) {
         setProductForm(prev => ({
           ...prev,
-          galleryImages: [...(prev.galleryImages || []), ...data.urls]
+          galleryImages: [...(prev.galleryImages || []), ...validUrls]
         }));
-      } else {
-        alert('Gallery upload failed');
       }
     } catch (err) {
-      alert('Error uploading gallery files');
+      console.error('Gallery upload error:', err);
     } finally {
       setUploadingGallery(false);
     }
@@ -776,11 +815,8 @@ export default function AdminDashboard({
                           onChange={async (e) => {
                             const file = e.target.files[0];
                             if (!file) return;
-                            const fd = new FormData();
-                            fd.append('image', file);
-                            const res = await fetch('/api/upload', { method: 'POST', body: fd });
-                            const data = await res.json();
-                            if (data.url) setNewCategory(prev => ({ ...prev, image: data.url }));
+                            const url = await uploadOrFallback(file);
+                            if (url) setNewCategory(prev => ({ ...prev, image: url }));
                           }}
                           className="hidden"
                         />
@@ -842,20 +878,29 @@ export default function AdminDashboard({
                             </span>
                           </td>
                           <td className="py-3 px-4 text-right">
-                            {cat.id !== 'all' && (
+                            <div className="flex items-center justify-end gap-1.5">
                               <button
-                                onClick={() => {
-                                  if (window.confirm(`Delete category "${cat.name}"?`)) {
-                                    const filtered = categoriesList.filter(c => c.id !== cat.id);
-                                    handleSaveCategories(filtered);
-                                  }
-                                }}
-                                className="p-1.5 rounded bg-[#202020] hover:bg-red-500 hover:text-white text-zinc-400 transition"
-                                title="Delete Category"
+                                onClick={() => setEditingCategory({ ...cat })}
+                                className="p-1.5 rounded bg-[#202020] hover:bg-gold-500 hover:text-black text-zinc-300 transition"
+                                title="Edit Category & Thumbnail"
                               >
-                                <Trash2 size={14} />
+                                <Edit3 size={14} />
                               </button>
-                            )}
+                              {cat.id !== 'all' && (
+                                <button
+                                  onClick={() => {
+                                    if (window.confirm(`Delete category "${cat.name}"?`)) {
+                                      const filtered = categoriesList.filter(c => c.id !== cat.id);
+                                      handleSaveCategories(filtered);
+                                    }
+                                  }}
+                                  className="p-1.5 rounded bg-[#202020] hover:bg-red-500 hover:text-white text-zinc-400 transition"
+                                  title="Delete Category"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );
@@ -863,6 +908,91 @@ export default function AdminDashboard({
                   </tbody>
                 </table>
               </div>
+
+              {/* Edit Category Modal */}
+              {editingCategory && (
+                <div className="fixed inset-0 z-50 overflow-y-auto bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+                  <div className="relative bg-[#141414] border border-gold-500/40 rounded-2xl max-w-lg w-full p-6 shadow-2xl">
+                    <button
+                      onClick={() => setEditingCategory(null)}
+                      className="absolute top-4 right-4 p-2 text-zinc-400 hover:text-white"
+                    >
+                      <X size={20} />
+                    </button>
+
+                    <h3 className="font-serif text-lg font-bold text-white mb-4">
+                      Edit Category: <span className="text-gold-300">{editingCategory.name}</span>
+                    </h3>
+
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-xs text-zinc-300 font-semibold mb-1">Display Name *</label>
+                        <input
+                          type="text"
+                          value={editingCategory.name}
+                          onChange={(e) => setEditingCategory({ ...editingCategory, name: e.target.value })}
+                          className="w-full bg-[#1c1c1c] border border-[#333] rounded px-3 py-2 text-xs text-white focus:outline-none focus:border-gold-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs text-zinc-300 font-semibold mb-1">Circle Thumbnail Image</label>
+                        <div className="flex gap-3 items-center">
+                          <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-gold-500/50 p-0.5 bg-black shrink-0">
+                            <img src={editingCategory.image || '/images/cat-all.jpg'} alt="Preview" className="w-full h-full object-cover rounded-full" />
+                          </div>
+                          <div className="flex-grow space-y-2">
+                            <input
+                              type="text"
+                              value={editingCategory.image}
+                              onChange={(e) => setEditingCategory({ ...editingCategory, image: e.target.value })}
+                              placeholder="/images/... or upload from computer"
+                              className="w-full bg-[#1c1c1c] border border-[#333] rounded px-3 py-2 text-xs text-white focus:outline-none focus:border-gold-500"
+                            />
+                            <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-gold-500/20 hover:bg-gold-500 hover:text-black border border-gold-500/40 text-gold-300 text-xs font-bold cursor-pointer transition">
+                              <Upload size={13} />
+                              <span>Browse & Upload from PC</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={async (e) => {
+                                  const file = e.target.files[0];
+                                  if (!file) return;
+                                  const url = await uploadOrFallback(file);
+                                  if (url) setEditingCategory(prev => ({ ...prev, image: url }));
+                                }}
+                                className="hidden"
+                              />
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end gap-2 pt-3 border-t border-[#222]">
+                        <button
+                          type="button"
+                          onClick={() => setEditingCategory(null)}
+                          className="px-4 py-2 rounded-lg bg-[#222] text-zinc-400 text-xs hover:text-white"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!editingCategory.name) return;
+                            const updated = categoriesList.map(c => c.id === editingCategory.id ? editingCategory : c);
+                            handleSaveCategories(updated);
+                            setEditingCategory(null);
+                          }}
+                          className="px-5 py-2 rounded-lg bg-gold-500 hover:bg-gold-400 text-black font-bold text-xs uppercase tracking-wider transition"
+                        >
+                          Save Category
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

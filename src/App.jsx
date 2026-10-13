@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import AutoHeroSlider from './components/AutoHeroSlider';
+import CategoryCirclesCarousel from './components/CategoryCirclesCarousel';
 import ProductCard from './components/ProductCard';
 import ProductPage from './components/ProductPage';
 import CartDrawer from './components/CartDrawer';
 import CheckoutModal from './components/CheckoutModal';
 import CustomerReviews from './components/CustomerReviews';
+import AboutUsModal from './components/AboutUsModal';
 import AdminDashboard from './components/AdminDashboard';
 import AdminLoginModal from './components/AdminLoginModal';
 import InvoiceModal from './components/InvoiceModal';
@@ -43,6 +45,7 @@ export default function App() {
   // Modals & Panels
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [isAboutUsOpen, setIsAboutUsOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
@@ -229,6 +232,7 @@ export default function App() {
         setIsCartOpen={setIsCartOpen}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
+        onOpenAbout={() => setIsAboutUsOpen(true)}
       />
 
       {/* 2. CONDITIONAL VIEW: FULL PRODUCT PAGE vs. HOME STORE */}
@@ -262,74 +266,18 @@ export default function App() {
             />
           )}
 
-          {/* B. Homepage Luxury Category Circles Showcase (Instagram/Story Style) */}
+          {/* B. Homepage Luxury Category Circles Carousel (4s Auto Animation & No Cut-Off) */}
           {activeCategory === 'all' && !searchQuery && (
-            <section className="bg-[#0c0c0c] border-b border-[#1f1f1f] py-8 px-4 sm:px-6 lg:px-8">
-              <div className="max-w-7xl mx-auto">
-                <div className="text-center mb-6">
-                  <span className="text-[11px] font-bold uppercase tracking-[0.25em] text-gold-400">
-                    EXPLORE BY CATEGORY
-                  </span>
-                  <h3 className="font-serif text-xl sm:text-2xl font-bold text-white mt-1">
-                    Curated Olfactory Collections
-                  </h3>
-                </div>
-
-                <div className="flex items-center justify-center gap-6 sm:gap-10 overflow-x-auto py-2 no-scrollbar">
-                  {(categories || []).map((cat) => {
-                    const isActive = activeCategory === cat.id;
-                    const catCount = cat.id === 'all' 
-                      ? products.length 
-                      : products.filter(p => p.category?.toLowerCase() === cat.id.toLowerCase()).length;
-
-                    return (
-                      <button
-                        key={cat.id}
-                        onClick={() => {
-                          setActiveCategory(cat.id);
-                          const el = document.getElementById('catalog-section');
-                          if (el) el.scrollIntoView({ behavior: 'smooth' });
-                        }}
-                        className="group flex flex-col items-center gap-2.5 shrink-0 focus:outline-none"
-                      >
-                        {/* Circular Image Frame */}
-                        <div className={`relative w-20 h-20 sm:w-24 sm:h-24 rounded-full p-1 transition-all duration-300 ${
-                          isActive 
-                            ? 'ring-2 ring-gold-400 scale-105 shadow-[0_0_20px_rgba(212,175,55,0.4)]' 
-                            : 'ring-1 ring-gold-500/30 group-hover:ring-gold-400/80 group-hover:scale-105'
-                        }`}>
-                          <div className="w-full h-full rounded-full overflow-hidden bg-[#181818] border border-black/40">
-                            <img 
-                              src={cat.image || '/images/cat-all.jpg'} 
-                              alt={cat.name} 
-                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                            />
-                          </div>
-
-                          {catCount === 0 && (
-                            <span className="absolute -top-1 -right-1 px-1.5 py-0.5 rounded-full bg-amber-500 text-black text-[9px] font-black uppercase tracking-tight shadow">
-                              Soon
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Title & Count */}
-                        <div className="text-center">
-                          <span className={`text-xs font-bold uppercase tracking-wider block transition ${
-                            isActive ? 'text-gold-300' : 'text-zinc-300 group-hover:text-gold-300'
-                          }`}>
-                            {cat.name}
-                          </span>
-                          <span className="text-[10px] text-zinc-500">
-                            {catCount > 0 ? `${catCount} Bottles` : 'Coming Soon'}
-                          </span>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </section>
+            <CategoryCirclesCarousel
+              categories={categories}
+              activeCategory={activeCategory}
+              setActiveCategory={(catId) => {
+                setActiveCategory(catId);
+                const el = document.getElementById('catalog-section');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }}
+              products={products}
+            />
           )}
 
           {/* C. Main Catalog Section */}
@@ -412,7 +360,7 @@ export default function App() {
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-6">
                 {displayProducts.map((product) => (
                   <ProductCard
                     key={product.id}
@@ -522,6 +470,7 @@ export default function App() {
           <div>
             <h4 className="text-xs font-bold uppercase tracking-wider text-white mb-3">Quick Navigation</h4>
             <ul className="space-y-1.5 text-zinc-400">
+              <li><button onClick={() => setIsAboutUsOpen(true)} className="hover:text-gold-300 text-gold-400 font-semibold flex items-center gap-1">✨ Our Story & Craft (About Us)</button></li>
               <li><button onClick={() => { setActiveCategory('men'); if (currentView !== 'home') handleBackToStore(); }} className="hover:text-gold-300">Men's Best Sellers</button></li>
               <li><button onClick={() => { setActiveCategory('women'); if (currentView !== 'home') handleBackToStore(); }} className="hover:text-gold-300">Women's Luxury</button></li>
               <li><button onClick={() => { setActiveCategory('unisex'); if (currentView !== 'home') handleBackToStore(); }} className="hover:text-gold-300">Unisex Impressions</button></li>
@@ -635,6 +584,13 @@ export default function App() {
           onClose={() => setInvoiceOrder(null)}
         />
       )}
+
+      {/* Luxury Brand Story & Craft (About Us) Modal */}
+      <AboutUsModal
+        isOpen={isAboutUsOpen}
+        settings={settings}
+        onClose={() => setIsAboutUsOpen(false)}
+      />
 
     </div>
   );

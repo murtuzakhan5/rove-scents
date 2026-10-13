@@ -138,19 +138,19 @@ export default function AutoHeroSlider({ onSelectProduct, onDirectCheckout, onSh
       {/* ================= MAIN WIDESCREEN CINEMATIC SLIDE ================= */}
       <div 
         onClick={handleBannerAction}
-        className="relative w-full min-h-[580px] sm:min-h-[640px] lg:min-h-[700px] flex items-center cursor-pointer transition-all duration-700 group overflow-hidden"
+        className="relative w-full min-h-[560px] sm:min-h-[640px] lg:min-h-[700px] flex items-center cursor-pointer transition-all duration-700 group overflow-hidden"
       >
         {/* Full Widescreen Background Photo */}
         <div className="absolute inset-0 z-0">
           <img 
             src={slide.bannerImage} 
             alt={slide.title} 
-            className="w-full h-full object-cover object-right sm:object-center group-hover:scale-105 transition-transform duration-1000 ease-out"
+            className="w-full h-full object-cover object-[80%_center] sm:object-center group-hover:scale-105 transition-transform duration-1000 ease-out"
           />
           
-          {/* Left-Aligned Luxury Dark Scrim Gradient for Crisp Typography Reading */}
-          <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-black/80 to-transparent sm:via-black/70 w-full sm:w-[78%] lg:w-[65%]" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-black/30 pointer-events-none" />
+          {/* Mobile bottom-to-top gradient + Desktop left-aligned gradient for crisp reading & visible bottle */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/85 to-black/30 sm:bg-gradient-to-r sm:from-black/95 sm:via-black/75 sm:to-transparent w-full sm:w-[78%] lg:w-[65%]" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20 pointer-events-none" />
           
           {/* Subtle Golden Volumetric Glow */}
           <div 
@@ -159,66 +159,66 @@ export default function AutoHeroSlider({ onSelectProduct, onDirectCheckout, onSh
           />
         </div>
 
-        {/* Overlaid Left-Aligned Luxury Content Container */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20 relative z-10 w-full">
-          <div className="max-w-xl sm:max-w-2xl space-y-5 sm:space-y-6 text-left">
+        {/* Overlaid Content Container */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-16 sm:py-20 relative z-10 w-full">
+          <div className="max-w-xl sm:max-w-2xl space-y-2.5 sm:space-y-6 text-left">
             
             {/* Tag Badge & Arabic Calligraphy Pill */}
-            <div className="flex items-center gap-3">
-              <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-black/85 backdrop-blur-md border border-gold-500/50 text-gold-300 text-[11px] font-bold tracking-[0.2em] uppercase shadow-[0_0_20px_rgba(212,175,55,0.25)]">
-                <Sparkles size={13} className="text-gold-400" />
+            <div className="flex items-center gap-2 sm:gap-3">
+              <span className="inline-flex items-center gap-1.5 px-2 sm:px-3.5 py-0.5 sm:py-1.5 rounded-full bg-black/85 backdrop-blur-md border border-gold-500/50 text-gold-300 text-[9px] sm:text-[11px] font-bold tracking-[0.2em] uppercase shadow-[0_0_20px_rgba(212,175,55,0.25)]">
+                <Sparkles size={11} className="text-gold-400" />
                 <span>{slide.tag}</span>
               </span>
 
               {slide.arabic && (
-                <span className="text-2xl font-serif text-gold-300 font-bold px-3 py-0.5 rounded-xl bg-black/85 backdrop-blur-md border border-gold-500/40 shadow-lg">
+                <span className="text-base sm:text-2xl font-serif text-gold-300 font-bold px-2 sm:px-3 py-0.5 rounded-xl bg-black/85 backdrop-blur-md border border-gold-500/40 shadow-lg">
                   {slide.arabic}
                 </span>
               )}
             </div>
 
             {/* Main Title & Slogan */}
-            <div className="space-y-1">
-              <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black font-serif tracking-tight text-white leading-[1.05] drop-shadow-[0_4px_25px_rgba(0,0,0,0.9)]">
+            <div className="space-y-0.5 sm:space-y-1">
+              <h1 className="text-2xl sm:text-6xl lg:text-7xl font-black font-serif tracking-tight text-white leading-[1.05] drop-shadow-[0_4px_25px_rgba(0,0,0,0.9)]">
                 <span className="gold-gradient-text uppercase block">
                   {slide.title}
                 </span>
               </h1>
-              <p className="text-xs sm:text-sm font-bold text-zinc-300 tracking-[0.3em] uppercase drop-shadow">
+              <p className="text-[9px] sm:text-sm font-bold text-zinc-300 tracking-[0.25em] uppercase drop-shadow">
                 {slide.genre}
               </p>
             </div>
 
             {/* Subtitle / Story */}
-            <p className="text-zinc-200 text-xs sm:text-sm max-w-xl font-light leading-relaxed drop-shadow">
+            <p className="text-zinc-200 text-[11px] sm:text-sm max-w-xl font-light leading-relaxed drop-shadow line-clamp-2 sm:line-clamp-none">
               {slide.subtitle}
             </p>
 
-            {/* 3D Floating Olfactory Notes Capsules (Clean wrapping, no ugly truncation) */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 max-w-xl">
-              <div className="p-2.5 rounded-xl bg-black/80 backdrop-blur-md border border-gold-500/40 shadow-md">
-                <span className="text-[10px] uppercase font-bold text-gold-400 block tracking-wider mb-0.5">🌿 TOP NOTES</span>
-                <span className="text-xs text-white font-medium leading-snug block">{slide.topNote}</span>
+            {/* 3D Floating Olfactory Notes Capsules (Compact 3-col on mobile) */}
+            <div className="grid grid-cols-3 gap-1.5 sm:gap-2.5 pt-0.5 max-w-xl">
+              <div className="p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl bg-black/85 backdrop-blur-md border border-gold-500/40 shadow-md">
+                <span className="text-[7.5px] sm:text-[10px] uppercase font-bold text-gold-400 block tracking-wider mb-0.5 truncate">🌿 TOP</span>
+                <span className="text-[9px] sm:text-xs text-white font-medium leading-tight block truncate sm:whitespace-normal">{slide.topNote}</span>
               </div>
-              <div className="p-2.5 rounded-xl bg-black/80 backdrop-blur-md border border-gold-500/40 shadow-md">
-                <span className="text-[10px] uppercase font-bold text-gold-400 block tracking-wider mb-0.5">🌸 HEART NOTES</span>
-                <span className="text-xs text-white font-medium leading-snug block">{slide.heartNote}</span>
+              <div className="p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl bg-black/85 backdrop-blur-md border border-gold-500/40 shadow-md">
+                <span className="text-[7.5px] sm:text-[10px] uppercase font-bold text-gold-400 block tracking-wider mb-0.5 truncate">🌸 HEART</span>
+                <span className="text-[9px] sm:text-xs text-white font-medium leading-tight block truncate sm:whitespace-normal">{slide.heartNote}</span>
               </div>
-              <div className="p-2.5 rounded-xl bg-black/80 backdrop-blur-md border border-gold-500/40 shadow-md">
-                <span className="text-[10px] uppercase font-bold text-gold-400 block tracking-wider mb-0.5">🪵 BASE NOTES</span>
-                <span className="text-xs text-white font-medium leading-snug block">{slide.baseNote}</span>
+              <div className="p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl bg-black/85 backdrop-blur-md border border-gold-500/40 shadow-md">
+                <span className="text-[7.5px] sm:text-[10px] uppercase font-bold text-gold-400 block tracking-wider mb-0.5 truncate">🪵 BASE</span>
+                <span className="text-[9px] sm:text-xs text-white font-medium leading-tight block truncate sm:whitespace-normal">{slide.baseNote}</span>
               </div>
             </div>
 
             {/* Price Row & Guarantee */}
-            <div className="flex items-baseline gap-3 pt-1">
-              <span className="text-3xl sm:text-4xl font-extrabold gold-gradient-text font-serif drop-shadow-md">
+            <div className="flex items-baseline gap-2 sm:gap-3 pt-0.5">
+              <span className="text-xl sm:text-4xl font-extrabold gold-gradient-text font-serif drop-shadow-md">
                 {slide.isCollection ? 'From Rs. 2,490' : `Rs. ${slide.price.toLocaleString()}`}
               </span>
-              <span className="text-base sm:text-lg text-zinc-400 line-through">
+              <span className="text-xs sm:text-lg text-zinc-400 line-through">
                 Rs. {slide.comparePrice.toLocaleString()}
               </span>
-              <span className="px-2.5 py-0.5 rounded bg-red-600/90 text-white text-[11px] font-extrabold uppercase tracking-wider shadow">
+              <span className="px-1.5 sm:px-2 py-0.5 rounded bg-red-600/90 text-white text-[8px] sm:text-[11px] font-extrabold uppercase tracking-wider shadow">
                 SAVE {Math.round(((slide.comparePrice - slide.price) / slide.comparePrice) * 100)}%
               </span>
               <span className="text-xs text-emerald-400 font-semibold hidden sm:inline">
@@ -226,18 +226,18 @@ export default function AutoHeroSlider({ onSelectProduct, onDirectCheckout, onSh
               </span>
             </div>
 
-            {/* High-Converting Action Button (Single Button Only: Buy Now or Shop All) */}
-            <div className="pt-2 flex items-center">
+            {/* High-Converting Action Button (Single Button Only) */}
+            <div className="pt-1 flex items-center">
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleBannerAction();
                 }}
-                className="w-full sm:w-auto px-9 py-4 rounded-xl bg-gradient-to-r from-gold-400 via-gold-500 to-amber-600 hover:brightness-110 text-black font-black text-xs sm:text-sm uppercase tracking-widest transition flex items-center justify-center gap-2.5 shadow-[0_0_35px_rgba(212,175,55,0.45)] active:scale-95"
+                className="w-full sm:w-auto px-5 sm:px-9 py-2.5 sm:py-4 rounded-xl bg-gradient-to-r from-gold-400 via-gold-500 to-amber-600 hover:brightness-110 text-black font-black text-xs sm:text-sm uppercase tracking-widest transition flex items-center justify-center gap-2 shadow-[0_0_35px_rgba(212,175,55,0.45)] active:scale-95"
               >
                 <span>{slide.btnText}</span>
-                <ArrowRight size={17} />
+                <ArrowRight size={15} />
               </button>
             </div>
 
@@ -245,17 +245,17 @@ export default function AutoHeroSlider({ onSelectProduct, onDirectCheckout, onSh
         </div>
 
         {/* Carousel Navigation Arrows */}
-        <div className="absolute right-4 sm:right-8 bottom-6 z-20 flex items-center gap-2">
+        <div className="absolute right-3 sm:right-8 bottom-3 sm:bottom-6 z-20 flex items-center gap-1.5 sm:gap-2">
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               handlePrev();
             }}
-            className="p-3 rounded-full bg-black/80 hover:bg-gold-500 hover:text-black border border-gold-500/40 text-gold-300 transition shadow-xl"
+            className="p-2 sm:p-3 rounded-full bg-black/80 hover:bg-gold-500 hover:text-black border border-gold-500/40 text-gold-300 transition shadow-xl"
             aria-label="Previous Banner"
           >
-            <ChevronLeft size={20} />
+            <ChevronLeft size={16} />
           </button>
           <button
             type="button"
@@ -263,15 +263,15 @@ export default function AutoHeroSlider({ onSelectProduct, onDirectCheckout, onSh
               e.stopPropagation();
               handleNext();
             }}
-            className="p-3 rounded-full bg-black/80 hover:bg-gold-500 hover:text-black border border-gold-500/40 text-gold-300 transition shadow-xl"
+            className="p-2 sm:p-3 rounded-full bg-black/80 hover:bg-gold-500 hover:text-black border border-gold-500/40 text-gold-300 transition shadow-xl"
             aria-label="Next Banner"
           >
-            <ChevronRight size={20} />
+            <ChevronRight size={16} />
           </button>
         </div>
 
         {/* Slide Indicators at Bottom Left */}
-        <div className="absolute left-4 sm:left-8 bottom-6 z-20 flex items-center gap-2.5">
+        <div className="absolute left-4 sm:left-8 bottom-3 sm:bottom-6 z-20 flex items-center gap-2">
           {slides.map((s, idx) => {
             const isActive = currentSlide === idx;
             return (
@@ -282,10 +282,10 @@ export default function AutoHeroSlider({ onSelectProduct, onDirectCheckout, onSh
                   e.stopPropagation();
                   setCurrentSlide(idx);
                 }}
-                className={`h-2.5 rounded-full transition-all duration-300 ${
+                className={`h-1.5 sm:h-2.5 rounded-full transition-all duration-300 ${
                   isActive
-                    ? 'w-12 bg-gradient-to-r from-gold-400 to-amber-500 shadow-[0_0_12px_rgba(212,175,55,0.7)]'
-                    : 'w-3 bg-white/30 hover:bg-white/60'
+                    ? 'w-8 sm:w-12 bg-gradient-to-r from-gold-400 to-amber-500 shadow-[0_0_12px_rgba(212,175,55,0.7)]'
+                    : 'w-2 sm:w-3 bg-white/30 hover:bg-white/60'
                 }`}
                 aria-label={`Slide ${idx + 1}`}
               />

@@ -325,6 +325,78 @@
       "comment": "Very feminine, soft gardenia and subtle sweetness. Delivery was fast and cash on delivery was super smooth. Thank you ROVE Scents!",
       "verified": true,
       "approved": true
+    },
+    {
+      "id": "rev-5",
+      "productId": "prod-raaz",
+      "author": "Hamza Tariq",
+      "city": "Lahore",
+      "rating": 5,
+      "date": "2026-10-05",
+      "title": "ROVE RAAZ is an absolute mystery in a bottle",
+      "comment": "The dark black marble aesthetic matched the smell completely. White blossom opening and then rich warm amber with dark vanilla. My wife loved it immediately. Pure luxury!",
+      "verified": true,
+      "approved": true
+    },
+    {
+      "id": "rev-6",
+      "productId": "prod-afsana",
+      "author": "Ayesha Siddiqui",
+      "city": "Rawalpindi",
+      "rating": 5,
+      "date": "2026-10-04",
+      "title": "Sun-kissed peach & damask rose perfection",
+      "comment": "AFSANA smells like a dream. Soft, fruity, and romantic without being overly sweet. Got compliments the first day I wore it to a wedding. 15 hours easily lasting.",
+      "verified": true,
+      "approved": true
+    },
+    {
+      "id": "rev-7",
+      "productId": "prod-rukh",
+      "author": "Danial Qureshi",
+      "city": "Peshawar",
+      "rating": 5,
+      "date": "2026-10-03",
+      "title": "ROVE RUKH is the king of masculine fragrances",
+      "comment": "Italian bergamot, iris and smoked amber create such an imperial masculine scent. Heavyweight crystal glass bottle feels like a 50,000 rupee perfume. Worth every single rupee.",
+      "verified": true,
+      "approved": true
+    },
+    {
+      "id": "rev-8",
+      "productId": "prod-naz",
+      "author": "Fatima Zahra",
+      "city": "Multan",
+      "rating": 5,
+      "date": "2026-10-02",
+      "title": "White floral silk note is heavenly",
+      "comment": "Pure grace and elegant sillage. Does not cause headaches at all like local synthetic perfumes. You can smell the French oil concentration from the first spray.",
+      "verified": true,
+      "approved": true
+    },
+    {
+      "id": "rev-9",
+      "productId": "prod-1",
+      "author": "Saad Babar",
+      "city": "Sialkot",
+      "rating": 5,
+      "date": "2026-10-01",
+      "title": "COD delivery within 2 days, outstanding service",
+      "comment": "Ordered COD to Sialkot and received my package securely wrapped in bubblewrap with zero damage. Fragrance longevity exceeded my expectations.",
+      "verified": true,
+      "approved": true
+    },
+    {
+      "id": "rev-10",
+      "productId": "prod-2",
+      "author": "Mariam Jamil",
+      "city": "Quetta",
+      "rating": 5,
+      "date": "2026-09-30",
+      "title": "Best perfume investment in Pakistan!",
+      "comment": "I was hesitant before ordering from Instagram ads, but ROVE Scents is 100% genuine quality. The saffron and amber trail stays on clothes even after wash.",
+      "verified": true,
+      "approved": true
     }
   ]
 }

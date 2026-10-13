@@ -10,7 +10,8 @@ export default function Navbar({
   setIsCartOpen, 
   searchQuery, 
   setSearchQuery, 
-  cartTotal
+  cartTotal,
+  onOpenAbout
 }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -159,7 +160,7 @@ export default function Navbar({
         )}
 
         {/* Categories Bar Navigation */}
-        <div className="hidden md:flex items-center justify-center space-x-1 lg:space-x-4 border-t border-[#1a1a1a] py-2.5 overflow-x-auto no-scrollbar">
+        <div className="hidden md:flex items-center justify-center space-x-1 lg:space-x-3 border-t border-[#1a1a1a] py-2.5 overflow-x-auto no-scrollbar">
           {(categories || []).map((cat) => {
             const isActive = activeCategory === cat.id;
             return (
@@ -176,6 +177,14 @@ export default function Navbar({
               </button>
             );
           })}
+          {onOpenAbout && (
+            <button
+              onClick={onOpenAbout}
+              className="text-xs uppercase tracking-widest px-3.5 py-1.5 rounded-full font-semibold transition whitespace-nowrap text-gold-300 hover:text-white hover:bg-gold-500/20 border border-gold-500/40 shadow-sm"
+            >
+              ✨ Our Story / About
+            </button>
+          )}
         </div>
 
       </div>
@@ -200,6 +209,17 @@ export default function Navbar({
               {cat.name}
             </button>
           ))}
+          {onOpenAbout && (
+            <button
+              onClick={() => {
+                onOpenAbout();
+                setIsMobileMenuOpen(false);
+              }}
+              className="block w-full text-left px-3 py-2.5 rounded text-sm uppercase tracking-wider text-gold-300 font-bold hover:bg-[#1a1a1a] border-l-2 border-gold-500 bg-gold-500/10 mt-2"
+            >
+              ✨ Our Story & Craft (About Us)
+            </button>
+          )}
         </div>
       )}
     </header>

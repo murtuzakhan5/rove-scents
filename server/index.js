@@ -19,24 +19,22 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Static directories
 const uploadsDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
+let isDiskWritable = false;
+try {
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+  isDiskWritable = true;
+} catch (err) {
+  console.warn('Uploads directory not writable (likely serverless environment). Using memory/Base64.');
 }
+
 app.use('/uploads', express.static(uploadsDir));
 app.use('/images', express.static(path.join(rootDir, 'public', 'images')));
 
-// Multer storage for media uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadsDir);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, 'perfume-' + uniqueSuffix + ext);
-  }
-});
-const upload = multer({ storage });
+// Multer memory storage (works seamlessly in all environments without EROFS errors)
+const storage = multer.memoryStorage();
+const upload = multer({ storage, limits: { fileSize: 15 * 1024 * 1024 } });
 
 // Helper to read and write database
 const dbPath = path.join(__dirname, 'db.json');
@@ -152,20 +150,51 @@ app.delete('/api/products/:id', (req, res) => {
   res.json({ success: true, message: 'Product deleted' });
 });
 
-// 4. File Upload (for products & banners)
+// 4. File Upload (for products, categories & gallery)
 app.post('/api/upload', upload.single('image'), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No image file uploaded' });
   }
-  const fileUrl = `/uploads/${req.file.filename}`;
-  res.json({ url: fileUrl });
+
+  try {
+    if (isDiskWritable) {
+      const ext = path.extname(req.file.originalname) || '.jpg';
+      const filename = `perfume-${Date.now()}-${Math.round(Math.random() * 1e6)}${ext}`;
+      const filePath = path.join(uploadsDir, filename);
+      fs.writeFileSync(filePath, req.file.buffer);
+      return res.json({ url: `/uploads/${filename}` });
+    }
+  } catch (err) {
+    console.warn('Failed writing to disk, falling back to base64 Data URL:', err);
+  }
+
+  // Fallback to Base64 Data URL (100% works on Vercel & serverless)
+  const mime = req.file.mimetype || 'image/jpeg';
+  const base64 = req.file.buffer.toString('base64');
+  res.json({ url: `data:${mime};base64,${base64}` });
 });
 
 app.post('/api/upload-gallery', upload.array('images', 8), (req, res) => {
   if (!req.files || req.files.length === 0) {
     return res.status(400).json({ error: 'No files uploaded' });
   }
-  const urls = req.files.map(f => `/uploads/${f.filename}`);
+
+  const urls = req.files.map((file) => {
+    try {
+      if (isDiskWritable) {
+        const ext = path.extname(file.originalname) || '.jpg';
+        const filename = `perfume-${Date.now()}-${Math.round(Math.random() * 1e6)}${ext}`;
+        const filePath = path.join(uploadsDir, filename);
+        fs.writeFileSync(filePath, file.buffer);
+        return `/uploads/${filename}`;
+      }
+    } catch (e) {
+      // fallback
+    }
+    const mime = file.mimetype || 'image/jpeg';
+    return `data:${mime};base64,${file.buffer.toString('base64')}`;
+  });
+
   res.json({ urls });
 });
 
