@@ -47,9 +47,14 @@ export default function ProductDetailModal({ product, onClose, onAddToCart, sett
           <div className="md:col-span-5 flex flex-col gap-4">
             <div className="relative aspect-[4/5] rounded-xl overflow-hidden border border-[#2a2a2a] bg-[#181818] shadow-inner">
               <img 
-                src={product.image} 
+                src={product.image || '/images/bottle-rukh.jpg'} 
                 alt={product.name} 
                 className="w-full h-full object-cover object-center"
+                onError={(e) => {
+                  if (e.target.src !== '/images/bottle-rukh.jpg') {
+                    e.target.src = '/images/bottle-rukh.jpg';
+                  }
+                }}
               />
               {product.badge && (
                 <span className="absolute top-3 left-3 px-3 py-1 rounded text-xs font-bold tracking-widest uppercase bg-gradient-to-r from-amber-500 to-gold-400 text-black shadow">

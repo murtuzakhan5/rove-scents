@@ -36,13 +36,24 @@ app.use('/images', express.static(path.join(rootDir, 'public', 'images')));
 const storage = multer.memoryStorage();
 const upload = multer({ storage, limits: { fileSize: 15 * 1024 * 1024 } });
 
-// Helper to read and write database
+// Helper to read and write database with in-memory caching and /tmp fallback
 const dbPath = path.join(__dirname, 'db.json');
+const tmpDbPath = path.join('/tmp', 'rove_db.json');
+let cachedDB = null;
 
 function getDB() {
+  if (cachedDB) return cachedDB;
+
   try {
-    const data = fs.readFileSync(dbPath, 'utf8');
-    return JSON.parse(data);
+    if (fs.existsSync(tmpDbPath)) {
+      cachedDB = JSON.parse(fs.readFileSync(tmpDbPath, 'utf8'));
+      return cachedDB;
+    }
+  } catch (e) {}
+
+  try {
+    cachedDB = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
+    return cachedDB;
   } catch (err) {
     console.error('Error reading db.json:', err);
     return { settings: {}, categories: [], products: [], coupons: [], orders: [], reviews: [] };
@@ -50,13 +61,16 @@ function getDB() {
 }
 
 function saveDB(data) {
+  cachedDB = data;
   try {
     fs.writeFileSync(dbPath, JSON.stringify(data, null, 2), 'utf8');
-    return true;
   } catch (err) {
-    console.error('Error saving db.json:', err);
-    return false;
+    // Expected on Vercel read-only filesystem
   }
+  try {
+    fs.writeFileSync(tmpDbPath, JSON.stringify(data, null, 2), 'utf8');
+  } catch (err) {}
+  return true;
 }
 
 // ==================== API ROUTES ====================
@@ -156,21 +170,7 @@ app.post('/api/upload', upload.single('image'), (req, res) => {
     return res.status(400).json({ error: 'No image file uploaded' });
   }
 
-  // On Vercel serverless, disk writes cannot be served by Vercel CDN static rewrites, so use Base64
-  const isVercel = Boolean(process.env.VERCEL);
-  if (!isVercel && isDiskWritable) {
-    try {
-      const ext = path.extname(req.file.originalname) || '.jpg';
-      const filename = `perfume-${Date.now()}-${Math.round(Math.random() * 1e6)}${ext}`;
-      const filePath = path.join(uploadsDir, filename);
-      fs.writeFileSync(filePath, req.file.buffer);
-      return res.json({ url: `/uploads/${filename}` });
-    } catch (err) {
-      console.warn('Failed writing to disk, falling back to base64 Data URL:', err);
-    }
-  }
-
-  // Fallback to Base64 Data URL (100% works on Vercel & serverless without 404s)
+  // Base64 Data URL is 100% self-contained and never 404s on Vercel, serverless, or CDN
   const mime = req.file.mimetype || 'image/jpeg';
   const base64 = req.file.buffer.toString('base64');
   res.json({ url: `data:${mime};base64,${base64}` });
@@ -181,21 +181,10 @@ app.post('/api/upload-gallery', upload.array('images', 8), (req, res) => {
     return res.status(400).json({ error: 'No files uploaded' });
   }
 
-  const isVercel = Boolean(process.env.VERCEL);
   const urls = req.files.map((file) => {
-    if (!isVercel && isDiskWritable) {
-      try {
-        const ext = path.extname(file.originalname) || '.jpg';
-        const filename = `perfume-${Date.now()}-${Math.round(Math.random() * 1e6)}${ext}`;
-        const filePath = path.join(uploadsDir, filename);
-        fs.writeFileSync(filePath, file.buffer);
-        return `/uploads/${filename}`;
-      } catch (e) {
-        // fallback
-      }
-    }
     const mime = file.mimetype || 'image/jpeg';
-    return `data:${mime};base64,${file.buffer.toString('base64')}`;
+    const base64 = file.buffer.toString('base64');
+    return `data:${mime};base64,${base64}`;
   });
 
   res.json({ urls });

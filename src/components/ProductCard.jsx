@@ -17,10 +17,15 @@ export default function ProductCard({ product, onSelectProduct, onAddToCart, set
         
         {/* Product Image - Full bottle visibility */}
         <img 
-          src={product.image} 
+          src={product.image || '/images/bottle-rukh.jpg'} 
           alt={product.name} 
           className="w-full h-full object-cover object-center rounded-lg sm:rounded-xl group-hover:scale-105 transition-transform duration-700"
           loading="lazy"
+          onError={(e) => {
+            if (e.target.src !== '/images/bottle-rukh.jpg') {
+              e.target.src = '/images/bottle-rukh.jpg';
+            }
+          }}
         />
 
         {/* Subtle Vignette Gradient */}

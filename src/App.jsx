@@ -18,7 +18,13 @@ import { Sparkles, ArrowUpDown, ArrowRight, ShieldCheck, Lock, SlidersHorizontal
 export default function App() {
   const [settings, setSettings] = useState(null);
   const [categories, setCategories] = useState([]);
-  const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState(() => {
+    try {
+      const local = JSON.parse(localStorage.getItem('rove_custom_products') || '[]');
+      if (Array.isArray(local) && local.length > 0) return local;
+    } catch (e) {}
+    return [];
+  });
   const [orders, setOrders] = useState([]);
   const [coupons, setCoupons] = useState([]);
   const [reviews, setReviews] = useState([]);
@@ -60,23 +66,23 @@ export default function App() {
   const fetchData = async () => {
     try {
       const [resSet, resCat, resProd, resOrd, resCoup, resRev] = await Promise.all([
-        fetch('/api/settings').then(r => r.json()),
-        fetch('/api/categories').then(r => r.json()),
-        fetch('/api/products').then(r => r.json()),
-        fetch('/api/orders').then(r => r.json()),
-        fetch('/api/coupons').then(r => r.json()),
-        fetch('/api/reviews').then(r => r.json())
+        fetch('/api/settings').then(r => r.json()).catch(() => ({})),
+        fetch('/api/categories').then(r => r.json()).catch(() => []),
+        fetch('/api/products').then(r => r.json()).catch(() => []),
+        fetch('/api/orders').then(r => r.json()).catch(() => []),
+        fetch('/api/coupons').then(r => r.json()).catch(() => []),
+        fetch('/api/reviews').then(r => r.json()).catch(() => [])
       ]);
 
       // Vercel serverless persistence bridge: merge local custom items
-      let mergedProducts = Array.isArray(resProd) ? [...resProd] : [];
+      let mergedProducts = Array.isArray(resProd) && resProd.length > 0 ? [...resProd] : [];
       try {
         const localCustomProds = JSON.parse(localStorage.getItem('rove_custom_products') || '[]');
         if (localCustomProds.length > 0) {
           localCustomProds.forEach(lp => {
             const idx = mergedProducts.findIndex(p => p.id === lp.id);
             if (idx > -1) {
-              mergedProducts[idx] = lp;
+              mergedProducts[idx] = { ...mergedProducts[idx], ...lp };
             } else {
               mergedProducts.unshift(lp);
             }
@@ -92,15 +98,43 @@ export default function App() {
         }
       } catch (e) {}
 
-      setSettings(resSet);
-      setCategories(mergedCats);
-      setProducts(mergedProducts);
-      setOrders(resOrd);
-      setCoupons(resCoup);
-      setReviews(resRev);
+      if (resSet && Object.keys(resSet).length > 0) setSettings(resSet);
+      if (mergedCats.length > 0) setCategories(mergedCats);
+      if (mergedProducts.length > 0) setProducts(mergedProducts);
+      if (Array.isArray(resOrd)) setOrders(resOrd);
+      if (Array.isArray(resCoup)) setCoupons(resCoup);
+      if (Array.isArray(resRev)) setReviews(resRev);
     } catch (err) {
       console.error('Failed to load store data:', err);
     }
+  };
+
+  // Instant storefront update when admin saves/edits a product
+  const handleProductSaved = (savedProduct) => {
+    setProducts(prev => {
+      const next = [...prev];
+      const idx = next.findIndex(p => p.id === savedProduct.id);
+      if (idx > -1) {
+        next[idx] = { ...next[idx], ...savedProduct };
+      } else {
+        next.unshift(savedProduct);
+      }
+      return next;
+    });
+    if (activeProduct && activeProduct.id === savedProduct.id) {
+      setActiveProduct(prev => ({ ...prev, ...savedProduct }));
+    }
+    fetchData();
+  };
+
+  // Instant storefront update when admin deletes a product
+  const handleProductDeleted = (deletedId) => {
+    setProducts(prev => prev.filter(p => p.id !== deletedId));
+    if (activeProduct && activeProduct.id === deletedId) {
+      setActiveProduct(null);
+      setCurrentView('home');
+    }
+    fetchData();
   };
 
   useEffect(() => {
@@ -597,6 +631,8 @@ export default function App() {
           settings={settings}
           categories={categories}
           onRefreshData={fetchData}
+          onProductSaved={handleProductSaved}
+          onProductDeleted={handleProductDeleted}
           onOpenInvoice={(order) => setInvoiceOrder(order)}
         />
       )}

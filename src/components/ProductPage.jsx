@@ -54,8 +54,8 @@ export default function ProductPage({
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setSelectedSize('50ml');
     setQuantity(1);
-    setActiveImage(product?.image);
-  }, [product?.id]);
+    setActiveImage(product?.image || '/images/bottle-rukh.jpg');
+  }, [product?.id, product?.image]);
 
   if (!product) return null;
 
@@ -182,9 +182,14 @@ export default function ProductPage({
             {/* Main Stage Image */}
             <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-[#141414] border-2 border-gold-500/40 shadow-[0_0_50px_rgba(212,175,55,0.2)] group">
               <img 
-                src={activeImage || product.image} 
+                src={activeImage || product.image || '/images/bottle-rukh.jpg'} 
                 alt={product.name} 
                 className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
+                onError={(e) => {
+                  if (e.target.src !== '/images/bottle-rukh.jpg') {
+                    e.target.src = '/images/bottle-rukh.jpg';
+                  }
+                }}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
 

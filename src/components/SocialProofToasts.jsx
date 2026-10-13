@@ -51,9 +51,14 @@ export default function SocialProofToasts({ products }) {
       {/* Product Image */}
       <div className="w-12 h-14 rounded-xl overflow-hidden bg-black shrink-0 border border-white/10">
         <img 
-          src={toast.product.image} 
+          src={toast.product.image || '/images/bottle-rukh.jpg'} 
           alt={toast.product.name} 
           className="w-full h-full object-cover" 
+          onError={(e) => {
+            if (e.target.src !== '/images/bottle-rukh.jpg') {
+              e.target.src = '/images/bottle-rukh.jpg';
+            }
+          }}
         />
       </div>
 

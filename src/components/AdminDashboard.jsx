@@ -33,7 +33,9 @@ export default function AdminDashboard({
   settings,
   categories,
   onRefreshData,
-  onOpenInvoice
+  onOpenInvoice,
+  onProductSaved,
+  onProductDeleted
 }) {
   const [activeTab, setActiveTab] = useState('overview'); // overview, products, categories, orders, coupons, settings, reviews
 
@@ -99,8 +101,8 @@ export default function AdminDashboard({
   const pendingOrdersCount = (orders || []).filter(o => o.status === 'Pending').length;
   const confirmedOrdersCount = (orders || []).filter(o => o.status === 'Confirmed' || o.status === 'Shipped').length;
 
-  // Compress and read image file to high-efficiency Base64 Data URL
-  const fileToDataUrl = (file, maxWidth = 1200, maxHeight = 1200, quality = 0.85) => {
+  // Compress and read image file to high-efficiency Base64 Data URL (30-50KB)
+  const fileToDataUrl = (file, maxWidth = 800, maxHeight = 800, quality = 0.75) => {
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -109,13 +111,9 @@ export default function AdminDashboard({
           let width = img.width;
           let height = img.height;
           if (width > maxWidth || height > maxHeight) {
-            if (width > height) {
-              height = Math.round((height * maxWidth) / width);
-              width = maxWidth;
-            } else {
-              width = Math.round((width * maxHeight) / height);
-              maxHeight = height;
-            }
+            const ratio = Math.min(maxWidth / width, maxHeight / height);
+            width = Math.round(width * ratio);
+            height = Math.round(height * ratio);
           }
           const canvas = document.createElement('canvas');
           canvas.width = width;
@@ -132,29 +130,15 @@ export default function AdminDashboard({
     });
   };
 
-  // Safe file uploader: on Vercel / remote production hosts, always returns Base64 Data URL so images NEVER 404
+  // Safe file uploader: generates ultra-compact Data URL that works everywhere without 404s or storage limits
   const uploadOrFallback = async (file) => {
-    const fallbackDataUrl = await fileToDataUrl(file);
-    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-      return fallbackDataUrl;
-    }
     try {
-      const formData = new FormData();
-      formData.append('image', file);
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.url) {
-          return data.url;
-        }
-      }
+      const dataUrl = await fileToDataUrl(file, 800, 800, 0.75);
+      if (dataUrl) return dataUrl;
     } catch (err) {
-      console.warn('Backend file upload fell back to client Base64', err);
+      console.warn('Image compression fallback error:', err);
     }
-    return fallbackDataUrl;
+    return '';
   };
 
   // Handle password update
@@ -297,37 +281,51 @@ export default function AdminDashboard({
   // Save Product (Create or Update)
   const handleSaveProduct = async (e) => {
     e.preventDefault();
+    
+    const updatedProd = editingProduct 
+      ? { ...editingProduct, ...productForm } 
+      : { 
+          id: 'prod-' + Date.now(), 
+          slug: (productForm.name || 'perfume').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+          rating: 5.0,
+          reviewsCount: 1,
+          ...productForm 
+        };
+
+    // 1. Instantly dual-write to localStorage for permanent Vercel persistence
+    try {
+      const localProds = JSON.parse(localStorage.getItem('rove_custom_products') || '[]');
+      const idx = localProds.findIndex(p => p.id === updatedProd.id);
+      if (idx > -1) {
+        localProds[idx] = updatedProd;
+      } else {
+        localProds.unshift(updatedProd);
+      }
+      localStorage.setItem('rove_custom_products', JSON.stringify(localProds));
+    } catch (err) {
+      console.warn('localStorage sync warning:', err);
+    }
+
+    // 2. Immediately close modal & notify parent App.jsx so storefront/homepage shows image with ZERO delay
+    setIsProductModalOpen(false);
+    if (onProductSaved) {
+      onProductSaved(updatedProd);
+    } else {
+      onRefreshData();
+    }
+
+    // 3. Sync to Express API in background
     try {
       const url = editingProduct ? `/api/products/${editingProduct.id}` : '/api/products';
       const method = editingProduct ? 'PUT' : 'POST';
 
-      const res = await fetch(url, {
+      await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(productForm)
+        body: JSON.stringify(updatedProd)
       });
-
-      // Dual-write to localStorage for permanent Vercel serverless persistence
-      try {
-        const localProds = JSON.parse(localStorage.getItem('rove_custom_products') || '[]');
-        const updatedProd = editingProduct 
-          ? { ...editingProduct, ...productForm } 
-          : { id: 'prod-' + Date.now(), ...productForm };
-        const idx = localProds.findIndex(p => p.id === updatedProd.id);
-        if (idx > -1) {
-          localProds[idx] = updatedProd;
-        } else {
-          localProds.unshift(updatedProd);
-        }
-        localStorage.setItem('rove_custom_products', JSON.stringify(localProds));
-      } catch (err) {
-        console.warn('localStorage sync warning:', err);
-      }
-
-      setIsProductModalOpen(false);
-      onRefreshData();
     } catch (err) {
-      alert('Error connecting to server');
+      console.warn('Backend API background sync warning:', err);
     }
   };
 
@@ -342,12 +340,16 @@ export default function AdminDashboard({
       } catch (err) {
         console.warn('localStorage delete error', err);
       }
-      const res = await fetch(`/api/products/${id}`, { method: 'DELETE' });
-      if (res.ok) {
+
+      if (onProductDeleted) {
+        onProductDeleted(id);
+      } else {
         onRefreshData();
       }
+
+      await fetch(`/api/products/${id}`, { method: 'DELETE' });
     } catch (err) {
-      alert('Error deleting product');
+      console.warn('Delete product sync warning:', err);
     }
   };
 

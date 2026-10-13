@@ -85,9 +85,14 @@ export default function CartDrawer({
                 <div key={`${item.id}-${item.selectedSize || index}`} className="pt-4 first:pt-0 flex gap-4">
                   <div className="w-20 h-24 rounded-lg overflow-hidden bg-[#181818] border border-[#262626] shrink-0">
                     <img 
-                      src={item.image} 
+                      src={item.image || '/images/bottle-rukh.jpg'} 
                       alt={item.name} 
                       className="w-full h-full object-cover"
+                      onError={(e) => {
+                        if (e.target.src !== '/images/bottle-rukh.jpg') {
+                          e.target.src = '/images/bottle-rukh.jpg';
+                        }
+                      }}
                     />
                   </div>
 
