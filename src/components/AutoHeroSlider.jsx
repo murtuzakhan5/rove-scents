@@ -142,156 +142,182 @@ export default function AutoHeroSlider({ onSelectProduct, onDirectCheckout, onSh
       {/* ================= MAIN WIDESCREEN CINEMATIC SLIDE ================= */}
       <div 
         onClick={handleBannerAction}
-        className="relative w-full min-h-[500px] sm:min-h-[560px] md:min-h-[640px] lg:min-h-[700px] flex items-center cursor-pointer transition-all duration-700 group overflow-hidden bg-[#070707]"
+        className="relative w-full aspect-[16/9] md:aspect-auto md:min-h-[560px] lg:min-h-[640px] flex items-center cursor-pointer transition-all duration-700 group overflow-hidden bg-[#070707]"
       >
-        {/* Background: Widescreen photo on Desktop | Ambient background on Mobile */}
+        {/* Real User-Designed 16:9 Banner Image (100% Full Width, 0% Cut-Off on all devices) */}
         <div className="absolute inset-0 z-0">
           <img 
             src={slide.bannerImage} 
             alt={slide.title} 
-            className="w-full h-full object-cover object-center hidden md:block group-hover:scale-105 transition-transform duration-1000 ease-out"
+            className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-1000 ease-out"
           />
-          
-          {/* Mobile ambient background with subtle golden aura */}
-          <div className="md:hidden absolute inset-0 bg-[#080808]">
-            <img 
-              src={slide.bannerImage} 
-              alt={slide.title} 
-              className="w-full h-full object-cover opacity-20 blur-sm scale-110"
-            />
-          </div>
 
-          {/* Desktop left-aligned gradient for crisp reading & visible bottle */}
-          <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-black/80 to-transparent hidden md:block w-[72%] lg:w-[65%]" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/40 pointer-events-none" />
-          
-          {/* Subtle Golden Volumetric Glow */}
+          {/* Left-Aligned Soft Gradient for Crisp Typography Legibility (Right-side perfume bottle stays 100% visible) */}
+          <div className="absolute inset-y-0 left-0 w-[58%] sm:w-[50%] bg-gradient-to-r from-black/90 via-black/55 to-transparent pointer-events-none md:hidden" />
+          <div className="absolute inset-y-0 left-0 w-[68%] lg:w-[60%] bg-gradient-to-r from-black/95 via-black/75 to-transparent pointer-events-none hidden md:block" />
+          <div className="absolute inset-x-0 bottom-0 h-10 sm:h-16 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
+
+          {/* Subtle Golden Volumetric Ambient Glow on Desktop */}
           <div 
-            className="absolute top-1/2 left-1/4 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[500px] rounded-full blur-[140px] pointer-events-none"
+            className="hidden md:block absolute top-1/2 left-1/4 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[500px] rounded-full blur-[140px] pointer-events-none"
             style={{ background: slide.accentGlow }}
           />
         </div>
 
-        {/* Overlaid Content Container (2-Column on Mobile: Left Content, Right Bottle Image) */}
-        <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 pt-5 pb-14 sm:py-20 relative z-10 w-full">
-          <div className="flex flex-row items-center justify-between gap-2 sm:gap-6">
+        {/* 1. MOBILE OVERLAY (md:hidden): Compact, Left-Aligned Title & Price Only — Bottle on right is 100% unobstructed */}
+        <div className="absolute inset-y-0 left-0 w-[56%] sm:w-[50%] flex flex-col justify-center pl-3.5 sm:pl-6 pr-1 z-10 md:hidden pointer-events-none">
+          <div className="space-y-1 sm:space-y-1.5 text-left">
             
-            {/* LEFT COLUMN: Content, Typography, Notes, Price, Button */}
-            <div className="w-[58%] sm:w-[58%] md:w-full md:max-w-xl lg:max-w-2xl space-y-2 sm:space-y-3.5 md:space-y-6 text-left shrink-0">
-              
-              {/* Tag Badge & Arabic Calligraphy Pill */}
-              <div className="flex items-center gap-1.5 sm:gap-3">
-                <span className="inline-flex items-center gap-1 px-2 sm:px-3.5 py-0.5 sm:py-1 rounded-full bg-black/90 backdrop-blur-md border border-gold-500/50 text-gold-300 text-[8px] sm:text-[10px] md:text-[11px] font-bold tracking-[0.15em] uppercase shadow-[0_0_15px_rgba(212,175,55,0.25)] truncate max-w-[170px] sm:max-w-none">
-                  <Sparkles size={10} className="text-gold-400 shrink-0" />
-                  <span className="truncate">{slide.tag}</span>
+            {/* Tag / Arabic */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-black/80 backdrop-blur-sm border border-gold-500/40 text-gold-300 text-[7.5px] sm:text-[9px] font-bold tracking-wider uppercase">
+                <Sparkles size={8} className="text-gold-400 shrink-0" />
+                <span className="truncate max-w-[110px] sm:max-w-none">{slide.badge || 'LUXURY'}</span>
+              </span>
+              {slide.arabic && (
+                <span className="text-[10px] sm:text-xs font-serif text-gold-300 font-bold px-1.5 py-0.5 rounded bg-black/80 backdrop-blur-sm border border-gold-500/40">
+                  {slide.arabic}
                 </span>
-
-                {slide.arabic && (
-                  <span className="text-sm sm:text-xl md:text-2xl font-serif text-gold-300 font-bold px-2 sm:px-3 py-0.5 rounded-lg bg-black/90 backdrop-blur-md border border-gold-500/40 shadow">
-                    {slide.arabic}
-                  </span>
-                )}
-              </div>
-
-              {/* Main Title & Slogan */}
-              <div className="space-y-0.5 sm:space-y-1">
-                <h1 className="text-xl sm:text-4xl md:text-6xl lg:text-7xl font-black font-serif tracking-tight text-white leading-[1.05] drop-shadow-[0_4px_25px_rgba(0,0,0,0.9)]">
-                  <span className="gold-gradient-text uppercase block">
-                    {slide.title}
-                  </span>
-                </h1>
-                <p className="text-[8px] sm:text-xs md:text-sm font-bold text-zinc-300 tracking-[0.2em] uppercase drop-shadow truncate">
-                  {slide.genre}
-                </p>
-              </div>
-
-              {/* Subtitle / Story */}
-              <p className="text-zinc-200 text-[10px] sm:text-xs md:text-sm max-w-xl font-light leading-relaxed drop-shadow line-clamp-2 sm:line-clamp-3 md:line-clamp-none">
-                {slide.subtitle}
-              </p>
-
-              {/* Olfactory Notes Capsules (Compact on mobile) */}
-              <div className="grid grid-cols-3 gap-1 sm:gap-2 md:gap-2.5 pt-0.5 max-w-xl">
-                <div className="p-1 sm:p-2 md:p-2.5 rounded-lg bg-black/90 backdrop-blur-md border border-gold-500/40 shadow-sm">
-                  <span className="text-[7px] sm:text-[9px] md:text-[10px] uppercase font-bold text-gold-400 block tracking-wider truncate">🌿 TOP</span>
-                  <span className="text-[8.5px] sm:text-xs text-white font-medium leading-tight block truncate sm:whitespace-normal">{slide.topNote}</span>
-                </div>
-                <div className="p-1 sm:p-2 md:p-2.5 rounded-lg bg-black/90 backdrop-blur-md border border-gold-500/40 shadow-sm">
-                  <span className="text-[7px] sm:text-[9px] md:text-[10px] uppercase font-bold text-gold-400 block tracking-wider truncate">🌸 HEART</span>
-                  <span className="text-[8.5px] sm:text-xs text-white font-medium leading-tight block truncate sm:whitespace-normal">{slide.heartNote}</span>
-                </div>
-                <div className="p-1 sm:p-2 md:p-2.5 rounded-lg bg-black/90 backdrop-blur-md border border-gold-500/40 shadow-sm">
-                  <span className="text-[7px] sm:text-[9px] md:text-[10px] uppercase font-bold text-gold-400 block tracking-wider truncate">🪵 BASE</span>
-                  <span className="text-[8.5px] sm:text-xs text-white font-medium leading-tight block truncate sm:whitespace-normal">{slide.baseNote}</span>
-                </div>
-              </div>
-
-              {/* Price Row & Guarantee */}
-              <div className="flex items-baseline gap-1.5 sm:gap-3 pt-0.5">
-                <span className="text-base sm:text-2xl md:text-4xl font-extrabold gold-gradient-text font-serif drop-shadow-md">
-                  {slide.isCollection ? 'From Rs. 2,490' : `Rs. ${slide.price.toLocaleString()}`}
-                </span>
-                <span className="text-[10px] sm:text-sm md:text-lg text-zinc-400 line-through">
-                  Rs. {slide.comparePrice.toLocaleString()}
-                </span>
-                <span className="px-1.5 py-0.5 rounded bg-red-600/90 text-white text-[7.5px] sm:text-[10px] font-extrabold uppercase tracking-wider shadow">
-                  SAVE {Math.round(((slide.comparePrice - slide.price) / slide.comparePrice) * 100)}%
-                </span>
-                <span className="text-xs text-emerald-400 font-semibold hidden md:inline">
-                  • Free Nationwide Delivery Included
-                </span>
-              </div>
-
-              {/* High-Converting Action Button (Single Button Only) */}
-              <div className="pt-0.5 sm:pt-1 flex items-center">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleBannerAction();
-                  }}
-                  className="w-full sm:w-auto px-4 sm:px-7 md:px-9 py-2.5 sm:py-3.5 md:py-4 rounded-xl bg-gradient-to-r from-gold-400 via-gold-500 to-amber-600 hover:brightness-110 text-black font-black text-[10px] sm:text-xs md:text-sm uppercase tracking-wider md:tracking-widest transition flex items-center justify-center gap-1.5 shadow-[0_0_25px_rgba(212,175,55,0.4)] active:scale-95"
-                >
-                  <span className="truncate">{slide.btnText}</span>
-                  <ArrowRight size={13} className="shrink-0" />
-                </button>
-              </div>
-
+              )}
             </div>
 
-            {/* RIGHT COLUMN (MOBILE EXCLUSIVE): Prominent Luxury Bottle Showcase */}
-            <div className="w-[42%] sm:w-[42%] md:hidden flex items-center justify-center relative shrink-0">
-              <div className="relative w-full max-w-[190px] aspect-[3/4] flex items-center justify-center">
-                {/* Glowing Aura behind bottle */}
-                <div 
-                  className="absolute inset-0 rounded-full blur-2xl opacity-60 scale-90 pointer-events-none"
-                  style={{ background: slide.accentGlow }}
-                />
-                
-                {/* Full Perfume Bottle */}
-                <img 
-                  src={slide.bottleImage || slide.bannerImage} 
-                  alt={slide.title}
-                  className="w-full h-full object-contain drop-shadow-[0_15px_30px_rgba(0,0,0,0.95)] group-hover:scale-105 transition-transform duration-500 relative z-10"
-                />
+            {/* Title */}
+            <div>
+              <h2 className="text-sm sm:text-xl font-black font-serif tracking-tight text-white leading-tight drop-shadow-md">
+                <span className="gold-gradient-text uppercase block">
+                  {slide.title}
+                </span>
+              </h2>
+              <p className="text-[7.5px] sm:text-[9.5px] font-semibold text-zinc-300 tracking-wider uppercase truncate">
+                {slide.genre}
+              </p>
+            </div>
+
+            {/* Price */}
+            <div className="flex items-baseline gap-1.5 pt-0.5">
+              <span className="text-xs sm:text-base font-black gold-gradient-text font-serif">
+                {slide.isCollection ? 'From Rs. 2,490' : `Rs. ${slide.price.toLocaleString()}`}
+              </span>
+              <span className="text-[8.5px] sm:text-[10px] text-zinc-400 line-through">
+                Rs. {slide.comparePrice.toLocaleString()}
+              </span>
+            </div>
+
+            {/* Compact CTA */}
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleBannerAction();
+                }}
+                className="pointer-events-auto inline-flex items-center gap-1 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-md bg-gradient-to-r from-gold-400 via-gold-500 to-amber-600 text-black font-black text-[8px] sm:text-[9.5px] uppercase tracking-wider shadow-[0_0_12px_rgba(212,175,55,0.4)] active:scale-95 transition"
+              >
+                <span>{slide.isCollection ? 'SHOP ALL' : 'BUY NOW'}</span>
+                <ArrowRight size={9} />
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+        {/* 2. DESKTOP OVERLAY (hidden md:block): Full Luxury Cinematic Showcase */}
+        <div className="hidden md:block max-w-7xl mx-auto px-6 lg:px-8 py-16 relative z-10 w-full">
+          <div className="max-w-xl lg:max-w-2xl space-y-4 lg:space-y-5 text-left">
+            
+            {/* Tag Badge & Arabic Calligraphy */}
+            <div className="flex items-center gap-3">
+              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-black/90 backdrop-blur-md border border-gold-500/50 text-gold-300 text-[11px] font-bold tracking-[0.15em] uppercase shadow-[0_0_15px_rgba(212,175,55,0.25)]">
+                <Sparkles size={11} className="text-gold-400 shrink-0" />
+                <span>{slide.tag}</span>
+              </span>
+
+              {slide.arabic && (
+                <span className="text-xl lg:text-2xl font-serif text-gold-300 font-bold px-3 py-0.5 rounded-lg bg-black/90 backdrop-blur-md border border-gold-500/40 shadow">
+                  {slide.arabic}
+                </span>
+              )}
+            </div>
+
+            {/* Main Title & Slogan */}
+            <div className="space-y-1">
+              <h1 className="text-5xl lg:text-7xl font-black font-serif tracking-tight text-white leading-[1.05] drop-shadow-[0_4px_25px_rgba(0,0,0,0.9)]">
+                <span className="gold-gradient-text uppercase block">
+                  {slide.title}
+                </span>
+              </h1>
+              <p className="text-xs sm:text-sm font-bold text-zinc-300 tracking-[0.2em] uppercase drop-shadow">
+                {slide.genre}
+              </p>
+            </div>
+
+            {/* Subtitle / Story */}
+            <p className="text-zinc-200 text-xs sm:text-sm max-w-xl font-light leading-relaxed drop-shadow">
+              {slide.subtitle}
+            </p>
+
+            {/* Olfactory Notes Capsules */}
+            <div className="grid grid-cols-3 gap-2.5 pt-1 max-w-xl">
+              <div className="p-2 lg:p-2.5 rounded-lg bg-black/90 backdrop-blur-md border border-gold-500/40 shadow-sm">
+                <span className="text-[10px] uppercase font-bold text-gold-400 block tracking-wider">🌿 TOP</span>
+                <span className="text-xs text-white font-medium leading-tight block">{slide.topNote}</span>
               </div>
+              <div className="p-2 lg:p-2.5 rounded-lg bg-black/90 backdrop-blur-md border border-gold-500/40 shadow-sm">
+                <span className="text-[10px] uppercase font-bold text-gold-400 block tracking-wider">🌸 HEART</span>
+                <span className="text-xs text-white font-medium leading-tight block">{slide.heartNote}</span>
+              </div>
+              <div className="p-2 lg:p-2.5 rounded-lg bg-black/90 backdrop-blur-md border border-gold-500/40 shadow-sm">
+                <span className="text-[10px] uppercase font-bold text-gold-400 block tracking-wider">🪵 BASE</span>
+                <span className="text-xs text-white font-medium leading-tight block">{slide.baseNote}</span>
+              </div>
+            </div>
+
+            {/* Price Row & Guarantee */}
+            <div className="flex items-baseline gap-3 pt-1">
+              <span className="text-2xl lg:text-4xl font-extrabold gold-gradient-text font-serif drop-shadow-md">
+                {slide.isCollection ? 'From Rs. 2,490' : `Rs. ${slide.price.toLocaleString()}`}
+              </span>
+              <span className="text-base lg:text-lg text-zinc-400 line-through">
+                Rs. {slide.comparePrice.toLocaleString()}
+              </span>
+              <span className="px-2 py-0.5 rounded bg-red-600/90 text-white text-[10px] font-extrabold uppercase tracking-wider shadow">
+                SAVE {Math.round(((slide.comparePrice - slide.price) / slide.comparePrice) * 100)}%
+              </span>
+              <span className="text-xs text-emerald-400 font-semibold">
+                • Free Nationwide Delivery Included
+              </span>
+            </div>
+
+            {/* High-Converting Action Button */}
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleBannerAction();
+                }}
+                className="px-8 py-3.5 lg:py-4 rounded-xl bg-gradient-to-r from-gold-400 via-gold-500 to-amber-600 hover:brightness-110 text-black font-black text-xs lg:text-sm uppercase tracking-widest transition flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(212,175,55,0.4)] active:scale-95"
+              >
+                <span>{slide.btnText}</span>
+                <ArrowRight size={14} className="shrink-0" />
+              </button>
             </div>
 
           </div>
         </div>
 
         {/* Carousel Navigation Arrows */}
-        <div className="absolute right-3 sm:right-8 bottom-3 sm:bottom-6 z-20 flex items-center gap-1.5 sm:gap-2">
+        <div className="absolute right-2 sm:right-6 bottom-2.5 sm:bottom-6 z-20 flex items-center gap-1 sm:gap-2">
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               handlePrev();
             }}
-            className="p-2 sm:p-3 rounded-full bg-black/80 hover:bg-gold-500 hover:text-black border border-gold-500/40 text-gold-300 transition shadow-xl"
+            className="p-1.5 sm:p-2.5 rounded-full bg-black/80 hover:bg-gold-500 hover:text-black border border-gold-500/40 text-gold-300 transition shadow-xl"
             aria-label="Previous Banner"
           >
-            <ChevronLeft size={16} />
+            <ChevronLeft size={14} className="sm:w-4 sm:h-4" />
           </button>
           <button
             type="button"
@@ -299,15 +325,15 @@ export default function AutoHeroSlider({ onSelectProduct, onDirectCheckout, onSh
               e.stopPropagation();
               handleNext();
             }}
-            className="p-2 sm:p-3 rounded-full bg-black/80 hover:bg-gold-500 hover:text-black border border-gold-500/40 text-gold-300 transition shadow-xl"
+            className="p-1.5 sm:p-2.5 rounded-full bg-black/80 hover:bg-gold-500 hover:text-black border border-gold-500/40 text-gold-300 transition shadow-xl"
             aria-label="Next Banner"
           >
-            <ChevronRight size={16} />
+            <ChevronRight size={14} className="sm:w-4 sm:h-4" />
           </button>
         </div>
 
-        {/* Slide Indicators at Bottom Left */}
-        <div className="absolute left-4 sm:left-8 bottom-3 sm:bottom-6 z-20 flex items-center gap-2">
+        {/* Slide Indicators at Bottom */}
+        <div className="absolute left-3.5 sm:left-8 bottom-2 sm:bottom-6 z-20 flex items-center gap-1.5 sm:gap-2">
           {slides.map((s, idx) => {
             const isActive = currentSlide === idx;
             return (
@@ -318,10 +344,10 @@ export default function AutoHeroSlider({ onSelectProduct, onDirectCheckout, onSh
                   e.stopPropagation();
                   setCurrentSlide(idx);
                 }}
-                className={`h-1.5 sm:h-2.5 rounded-full transition-all duration-300 ${
+                className={`h-1 sm:h-2 rounded-full transition-all duration-300 ${
                   isActive
-                    ? 'w-8 sm:w-12 bg-gradient-to-r from-gold-400 to-amber-500 shadow-[0_0_12px_rgba(212,175,55,0.7)]'
-                    : 'w-2 sm:w-3 bg-white/30 hover:bg-white/60'
+                    ? 'w-5 sm:w-10 bg-gradient-to-r from-gold-400 to-amber-500 shadow-[0_0_12px_rgba(212,175,55,0.7)]'
+                    : 'w-1.5 sm:w-2.5 bg-white/30 hover:bg-white/60'
                 }`}
                 aria-label={`Slide ${idx + 1}`}
               />
