@@ -35,7 +35,8 @@ export default function AdminDashboard({
   onRefreshData,
   onOpenInvoice,
   onProductSaved,
-  onProductDeleted
+  onProductDeleted,
+  onCategoriesUpdated
 }) {
   const [activeTab, setActiveTab] = useState('overview'); // overview, products, categories, orders, coupons, settings, reviews
 
@@ -69,7 +70,21 @@ export default function AdminDashboard({
   const [productSearch, setProductSearch] = useState('');
 
   // Category Editor State
-  const [categoriesList, setCategoriesList] = useState(categories || []);
+  const [categoriesList, setCategoriesList] = useState(() => {
+    try {
+      const local = JSON.parse(localStorage.getItem('rove_custom_categories') || '[]');
+      if (Array.isArray(local) && local.length > 0) return local;
+    } catch (e) {}
+    return categories || [];
+  });
+
+  // Keep categoriesList synced when categories prop updates
+  React.useEffect(() => {
+    if (categories && categories.length > 0) {
+      setCategoriesList(categories);
+    }
+  }, [categories]);
+
   const [newCategory, setNewCategory] = useState({ id: '', name: '', image: '/images/cat-all.jpg' });
   const [editingCategory, setEditingCategory] = useState(null);
   const [savingCategories, setSavingCategories] = useState(false);
@@ -220,21 +235,24 @@ export default function AdminDashboard({
   // Save Categories to backend
   const handleSaveCategories = async (updatedList) => {
     setSavingCategories(true);
+    setCategoriesList(updatedList);
     try {
       localStorage.setItem('rove_custom_categories', JSON.stringify(updatedList));
-      const res = await fetch('/api/categories', {
+      if (onCategoriesUpdated) {
+        onCategoriesUpdated(updatedList);
+      }
+      await fetch('/api/categories', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedList)
       });
-      if (res.ok) {
-        setCategoriesList(updatedList);
-        onRefreshData();
-      }
     } catch (err) {
-      console.warn('Saved categories to localStorage');
+      console.warn('Saved categories error:', err);
     } finally {
       setCategoriesList(updatedList);
+      if (onCategoriesUpdated) {
+        onCategoriesUpdated(updatedList);
+      }
       onRefreshData();
       setSavingCategories(false);
     }
@@ -253,9 +271,10 @@ export default function AdminDashboard({
   // Open Add Product Modal
   const openAddModal = () => {
     setEditingProduct(null);
+    const defaultCat = (categoriesList.find(c => c.id !== 'all')?.id) || 'men';
     setProductForm({
       name: '',
-      category: 'men',
+      category: defaultCat,
       gender: 'Men',
       inspiredBy: '',
       price: 2450,
@@ -862,23 +881,32 @@ export default function AdminDashboard({
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
-                    <label className="block text-[11px] text-zinc-300 font-semibold mb-1">Category Slug/ID *</label>
+                    <label className="block text-[11px] text-zinc-300 font-semibold mb-1">Display Name *</label>
                     <input
                       type="text"
-                      placeholder="e.g. oud-editions"
-                      value={newCategory.id}
-                      onChange={(e) => setNewCategory({ ...newCategory, id: e.target.value.toLowerCase().replace(/\s+/g, '-') })}
+                      placeholder="e.g. Nikkah Favours"
+                      value={newCategory.name}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setNewCategory(prev => ({
+                          ...prev,
+                          name: val,
+                          id: prev.id && prev.id !== prev.name?.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-')
+                            ? prev.id 
+                            : val.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-')
+                        }));
+                      }}
                       className="w-full bg-[#1c1c1c] border border-[#333] rounded px-3 py-2 text-xs text-white focus:outline-none focus:border-gold-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] text-zinc-300 font-semibold mb-1">Display Name *</label>
+                    <label className="block text-[11px] text-zinc-300 font-semibold mb-1">Category Slug/ID (Auto-Generated) *</label>
                     <input
                       type="text"
-                      placeholder="e.g. Oud Editions"
-                      value={newCategory.name}
-                      onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
-                      className="w-full bg-[#1c1c1c] border border-[#333] rounded px-3 py-2 text-xs text-white focus:outline-none focus:border-gold-500"
+                      placeholder="e.g. nikkah-favours"
+                      value={newCategory.id}
+                      onChange={(e) => setNewCategory({ ...newCategory, id: e.target.value.toLowerCase().replace(/\s+/g, '-') })}
+                      className="w-full bg-[#1c1c1c] border border-[#333] rounded px-3 py-2 text-xs text-white focus:outline-none focus:border-gold-500 font-mono"
                     />
                   </div>
                   <div>
@@ -913,11 +941,22 @@ export default function AdminDashboard({
                   <button
                     type="button"
                     onClick={() => {
-                      if (!newCategory.id || !newCategory.name) {
-                        alert('Please enter Category ID and Name');
+                      if (!newCategory.name || !newCategory.name.trim()) {
+                        alert('Please enter Category Display Name (e.g. Nikkah Favours)');
                         return;
                       }
-                      const updated = [...categoriesList, { ...newCategory }];
+                      const catId = newCategory.id || newCategory.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
+                      if (!catId) {
+                        alert('Please enter a valid Category ID');
+                        return;
+                      }
+                      const catToAdd = {
+                        ...newCategory,
+                        id: catId,
+                        name: newCategory.name.trim(),
+                        image: newCategory.image || '/images/cat-all.jpg'
+                      };
+                      const updated = [...categoriesList, catToAdd];
                       handleSaveCategories(updated);
                       setNewCategory({ id: '', name: '', image: '/images/cat-all.jpg' });
                     }}
@@ -1656,17 +1695,54 @@ export default function AdminDashboard({
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-[11px] text-zinc-300 font-semibold mb-1">Category</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[11px] text-zinc-300 font-semibold">Category *</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsProductModalOpen(false);
+                        setActiveTab('categories');
+                      }}
+                      className="text-[10px] text-gold-400 hover:text-gold-300 underline font-medium"
+                      title="Manage and create categories"
+                    >
+                      + Manage
+                    </button>
+                  </div>
                   <select
                     value={productForm.category}
-                    onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
-                    className="w-full bg-[#1c1c1c] border border-[#333] rounded px-3 py-2 text-xs text-white focus:outline-none"
+                    onChange={(e) => {
+                      if (e.target.value === '__add_new__') {
+                        const name = prompt('Enter new category display name (e.g. Nikkah Favours):');
+                        if (name && name.trim()) {
+                          const slug = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
+                          const newCatObj = { id: slug, name: name.trim(), image: '/images/cat-all.jpg' };
+                          const updated = [...categoriesList, newCatObj];
+                          handleSaveCategories(updated);
+                          setProductForm(prev => ({ ...prev, category: slug }));
+                        }
+                        return;
+                      }
+                      setProductForm({ ...productForm, category: e.target.value });
+                    }}
+                    className="w-full bg-[#1c1c1c] border border-[#333] rounded px-3 py-2 text-xs text-white focus:outline-none focus:border-gold-500 capitalize"
                   >
-                    <option value="men">Men's Best Sellers</option>
-                    <option value="women">Women's Luxury</option>
-                    <option value="unisex">Unisex Signatures</option>
-                    <option value="discovery">Discovery Sets</option>
-                    <option value="candles">Scented Candles</option>
+                    {(categoriesList || [])
+                      .filter(c => c.id !== 'all')
+                      .map(cat => (
+                        <option key={cat.id} value={cat.id} className="bg-[#181818] text-white">
+                          {cat.name} ({cat.id})
+                        </option>
+                      ))}
+                    {/* Fallback if product has a custom or newly added category */}
+                    {productForm.category && !categoriesList.some(c => c.id === productForm.category) && (
+                      <option value={productForm.category} className="bg-[#181818] text-white">
+                        {productForm.category}
+                      </option>
+                    )}
+                    <option value="__add_new__" className="bg-[#222] text-gold-300 font-bold">
+                      + Create New Category...
+                    </option>
                   </select>
                 </div>
                 <div>

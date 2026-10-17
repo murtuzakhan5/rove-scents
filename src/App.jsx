@@ -17,7 +17,13 @@ import { Sparkles, ArrowUpDown, ArrowRight, ShieldCheck, Lock, SlidersHorizontal
 
 export default function App() {
   const [settings, setSettings] = useState(null);
-  const [categories, setCategories] = useState([]);
+  const [categories, setCategories] = useState(() => {
+    try {
+      const local = JSON.parse(localStorage.getItem('rove_custom_categories') || '[]');
+      if (Array.isArray(local) && local.length > 0) return local;
+    } catch (e) {}
+    return [];
+  });
   const [products, setProducts] = useState(() => {
     try {
       const local = JSON.parse(localStorage.getItem('rove_custom_products') || '[]');
@@ -137,6 +143,15 @@ export default function App() {
     fetchData();
   };
 
+  // Instant storefront update when admin adds/edits/deletes categories
+  const handleCategoriesUpdated = (updatedCats) => {
+    setCategories(updatedCats);
+    try {
+      localStorage.setItem('rove_custom_categories', JSON.stringify(updatedCats));
+    } catch (e) {}
+    fetchData();
+  };
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -250,7 +265,9 @@ export default function App() {
   let displayProducts = [...products];
 
   if (activeCategory && activeCategory !== 'all') {
-    displayProducts = displayProducts.filter(p => p.category?.toLowerCase() === activeCategory.toLowerCase());
+    const normalize = (val) => (val || '').toLowerCase().trim().replace(/[\s-_]+/g, '');
+    const target = normalize(activeCategory);
+    displayProducts = displayProducts.filter(p => normalize(p.category) === target);
   }
 
   if (searchQuery.trim()) {
@@ -357,7 +374,8 @@ export default function App() {
                    activeCategory === 'women' ? "Women's Signature Floral & Amber Scents" :
                    activeCategory === 'unisex' ? "Universal Extrait De Parfum Signatures" :
                    activeCategory === 'attars' ? "Pure Concentrated Royal Attars" :
-                   "High-Sillage French Impressions (All Perfumes)"}
+                   activeCategory === 'all' ? "High-Sillage French Impressions (All Perfumes)" :
+                   `${categories.find(c => c.id === activeCategory)?.name || 'Curated'} (Exclusive Collection)`}
                 </h2>
               </div>
 
@@ -633,6 +651,7 @@ export default function App() {
           onRefreshData={fetchData}
           onProductSaved={handleProductSaved}
           onProductDeleted={handleProductDeleted}
+          onCategoriesUpdated={handleCategoriesUpdated}
           onOpenInvoice={(order) => setInvoiceOrder(order)}
         />
       )}
