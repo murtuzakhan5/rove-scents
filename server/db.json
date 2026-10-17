@@ -41,6 +41,11 @@
       "id": "attars",
       "name": "Pure Royal Attars",
       "image": "/images/cat-all.jpg"
+    },
+    {
+      "id": "nikkah-favours",
+      "name": "Nikkah Favours",
+      "image": "/images/cat-all.jpg"
     }
   ],
   "products": [

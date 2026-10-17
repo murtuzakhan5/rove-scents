@@ -100,7 +100,10 @@ export default function App() {
       try {
         const localCustomCats = JSON.parse(localStorage.getItem('rove_custom_categories') || '[]');
         if (localCustomCats.length > 0) {
-          mergedCats = localCustomCats;
+          const catMap = new Map();
+          mergedCats.forEach(c => c?.id && catMap.set(c.id.toLowerCase().trim(), c));
+          localCustomCats.forEach(c => c?.id && catMap.set(c.id.toLowerCase().trim(), c));
+          mergedCats = Array.from(catMap.values());
         }
       } catch (e) {}
 
@@ -125,31 +128,43 @@ export default function App() {
       } else {
         next.unshift(savedProduct);
       }
+      try {
+        localStorage.setItem('rove_custom_products', JSON.stringify(next));
+      } catch (e) {}
       return next;
     });
     if (activeProduct && activeProduct.id === savedProduct.id) {
       setActiveProduct(prev => ({ ...prev, ...savedProduct }));
     }
-    fetchData();
   };
 
   // Instant storefront update when admin deletes a product
   const handleProductDeleted = (deletedId) => {
-    setProducts(prev => prev.filter(p => p.id !== deletedId));
+    setProducts(prev => {
+      const filtered = prev.filter(p => p.id !== deletedId);
+      try {
+        localStorage.setItem('rove_custom_products', JSON.stringify(filtered));
+      } catch (e) {}
+      return filtered;
+    });
     if (activeProduct && activeProduct.id === deletedId) {
       setActiveProduct(null);
       setCurrentView('home');
     }
-    fetchData();
   };
 
   // Instant storefront update when admin adds/edits/deletes categories
   const handleCategoriesUpdated = (updatedCats) => {
-    setCategories(updatedCats);
-    try {
-      localStorage.setItem('rove_custom_categories', JSON.stringify(updatedCats));
-    } catch (e) {}
-    fetchData();
+    setCategories(prev => {
+      const map = new Map();
+      (prev || []).forEach(c => c?.id && map.set(c.id.toLowerCase().trim(), c));
+      (updatedCats || []).forEach(c => c?.id && map.set(c.id.toLowerCase().trim(), c));
+      const res = Array.from(map.values());
+      try {
+        localStorage.setItem('rove_custom_categories', JSON.stringify(res));
+      } catch (e) {}
+      return res;
+    });
   };
 
   useEffect(() => {
@@ -265,9 +280,12 @@ export default function App() {
   let displayProducts = [...products];
 
   if (activeCategory && activeCategory !== 'all') {
-    const normalize = (val) => (val || '').toLowerCase().trim().replace(/[\s-_]+/g, '');
+    const normalize = (val) => (val || '').toLowerCase().trim().replace(/[\s-_]+/g, '').replace(/s$/, '');
     const target = normalize(activeCategory);
-    displayProducts = displayProducts.filter(p => normalize(p.category) === target);
+    displayProducts = displayProducts.filter(p => {
+      const pCat = normalize(p.category);
+      return pCat === target || (pCat.length > 3 && target.length > 3 && (pCat.includes(target) || target.includes(pCat)));
+    });
   }
 
   if (searchQuery.trim()) {

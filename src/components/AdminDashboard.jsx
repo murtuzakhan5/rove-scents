@@ -78,10 +78,15 @@ export default function AdminDashboard({
     return categories || [];
   });
 
-  // Keep categoriesList synced when categories prop updates
+  // Keep categoriesList synced when categories prop updates without losing custom additions
   React.useEffect(() => {
     if (categories && categories.length > 0) {
-      setCategoriesList(categories);
+      setCategoriesList(prev => {
+        const map = new Map();
+        (categories || []).forEach(c => map.set(c.id, c));
+        (prev || []).forEach(c => map.set(c.id, c));
+        return Array.from(map.values());
+      });
     }
   }, [categories]);
 
@@ -271,7 +276,19 @@ export default function AdminDashboard({
   // Open Add Product Modal
   const openAddModal = () => {
     setEditingProduct(null);
-    const defaultCat = (categoriesList.find(c => c.id !== 'all')?.id) || 'men';
+    let currentCats = [...(categoriesList || [])];
+    try {
+      const local = JSON.parse(localStorage.getItem('rove_custom_categories') || '[]');
+      if (Array.isArray(local) && local.length > 0) {
+        const map = new Map();
+        (categories || []).forEach(c => map.set(c.id, c));
+        currentCats.forEach(c => map.set(c.id, c));
+        local.forEach(c => map.set(c.id, c));
+        currentCats = Array.from(map.values());
+        setCategoriesList(currentCats);
+      }
+    } catch (e) {}
+    const defaultCat = (currentCats.find(c => c.id !== 'all')?.id) || 'men';
     setProductForm({
       name: '',
       category: defaultCat,
@@ -1727,15 +1744,28 @@ export default function AdminDashboard({
                     }}
                     className="w-full bg-[#1c1c1c] border border-[#333] rounded px-3 py-2 text-xs text-white focus:outline-none focus:border-gold-500 capitalize"
                   >
-                    {(categoriesList || [])
-                      .filter(c => c.id !== 'all')
-                      .map(cat => (
-                        <option key={cat.id} value={cat.id} className="bg-[#181818] text-white">
-                          {cat.name} ({cat.id})
-                        </option>
-                      ))}
+                    {(() => {
+                      const allCatsMap = new Map();
+                      // Base/prop categories
+                      (categories || []).forEach(c => c?.id && allCatsMap.set(c.id.toLowerCase().trim(), c));
+                      // localStorage categories
+                      try {
+                        const local = JSON.parse(localStorage.getItem('rove_custom_categories') || '[]');
+                        if (Array.isArray(local)) local.forEach(c => c?.id && allCatsMap.set(c.id.toLowerCase().trim(), c));
+                      } catch (e) {}
+                      // State categories
+                      (categoriesList || []).forEach(c => c?.id && allCatsMap.set(c.id.toLowerCase().trim(), c));
+
+                      return Array.from(allCatsMap.values())
+                        .filter(c => c.id !== 'all')
+                        .map(cat => (
+                          <option key={cat.id} value={cat.id} className="bg-[#181818] text-white">
+                            {cat.name} ({cat.id})
+                          </option>
+                        ));
+                    })()}
                     {/* Fallback if product has a custom or newly added category */}
-                    {productForm.category && !categoriesList.some(c => c.id === productForm.category) && (
+                    {productForm.category && (
                       <option value={productForm.category} className="bg-[#181818] text-white">
                         {productForm.category}
                       </option>
