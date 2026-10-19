@@ -34,6 +34,15 @@ export default function App() {
   const [orders, setOrders] = useState([]);
   const [coupons, setCoupons] = useState([]);
   const [reviews, setReviews] = useState([]);
+  const [banners, setBanners] = useState(() => {
+    try {
+      const local = localStorage.getItem('rove_custom_banners');
+      return local ? JSON.parse(local) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [dbStatus, setDbStatus] = useState({ connected: false, type: 'local_json' });
 
   // Views: 'home' | 'product'
   const [currentView, setCurrentView] = useState('home');
@@ -68,16 +77,18 @@ export default function App() {
     localStorage.setItem('rove_cart', JSON.stringify(cartItems));
   }, [cartItems]);
 
-  // Fetch all data from Express API with localStorage persistence bridge
+  // Fetch all data from Express API with MongoDB & localStorage persistence bridge
   const fetchData = async () => {
     try {
-      const [resSet, resCat, resProd, resOrd, resCoup, resRev] = await Promise.all([
+      const [resSet, resCat, resProd, resOrd, resCoup, resRev, resBan, resDb] = await Promise.all([
         fetch('/api/settings').then(r => r.json()).catch(() => ({})),
         fetch('/api/categories').then(r => r.json()).catch(() => []),
         fetch('/api/products').then(r => r.json()).catch(() => []),
         fetch('/api/orders').then(r => r.json()).catch(() => []),
         fetch('/api/coupons').then(r => r.json()).catch(() => []),
-        fetch('/api/reviews').then(r => r.json()).catch(() => [])
+        fetch('/api/reviews').then(r => r.json()).catch(() => []),
+        fetch('/api/banners').then(r => r.json()).catch(() => []),
+        fetch('/api/database-status').then(r => r.json()).catch(() => ({ connected: false, type: 'local_json' }))
       ]);
 
       // Vercel serverless persistence bridge: merge local custom items
@@ -107,9 +118,22 @@ export default function App() {
         }
       } catch (e) {}
 
+      let mergedBanners = Array.isArray(resBan) && resBan.length > 0 ? [...resBan] : [];
+      try {
+        const localCustomBanners = JSON.parse(localStorage.getItem('rove_custom_banners') || '[]');
+        if (localCustomBanners.length > 0) {
+          const banMap = new Map();
+          mergedBanners.forEach(b => b?.id && banMap.set(b.id, b));
+          localCustomBanners.forEach(b => b?.id && banMap.set(b.id, b));
+          mergedBanners = Array.from(banMap.values());
+        }
+      } catch (e) {}
+
       if (resSet && Object.keys(resSet).length > 0) setSettings(resSet);
       if (mergedCats.length > 0) setCategories(mergedCats);
       if (mergedProducts.length > 0) setProducts(mergedProducts);
+      if (mergedBanners.length > 0) setBanners(mergedBanners);
+      if (resDb) setDbStatus(resDb);
       if (Array.isArray(resOrd)) setOrders(resOrd);
       if (Array.isArray(resCoup)) setCoupons(resCoup);
       if (Array.isArray(resRev)) setReviews(resRev);
@@ -162,6 +186,20 @@ export default function App() {
       const res = Array.from(map.values());
       try {
         localStorage.setItem('rove_custom_categories', JSON.stringify(res));
+      } catch (e) {}
+      return res;
+    });
+  };
+
+  // Instant storefront update when admin adds/edits/deletes hero banners
+  const handleBannersUpdated = (updatedBanners) => {
+    setBanners(prev => {
+      const map = new Map();
+      (prev || []).forEach(b => b?.id && map.set(b.id, b));
+      (updatedBanners || []).forEach(b => b?.id && map.set(b.id, b));
+      const res = Array.from(map.values());
+      try {
+        localStorage.setItem('rove_custom_banners', JSON.stringify(res));
       } catch (e) {}
       return res;
     });
@@ -348,6 +386,7 @@ export default function App() {
           {/* A. 3D Premium Auto-Playing Hero Showcase Banner (3D Pedestals, Notes, Glow) */}
           {activeCategory === 'all' && !searchQuery && (
             <AutoHeroSlider
+              banners={banners}
               products={products}
               settings={settings}
               onSelectProduct={handleOpenProductPage}
@@ -666,10 +705,13 @@ export default function App() {
           reviews={reviews}
           settings={settings}
           categories={categories}
+          banners={banners}
+          dbStatus={dbStatus}
           onRefreshData={fetchData}
           onProductSaved={handleProductSaved}
           onProductDeleted={handleProductDeleted}
           onCategoriesUpdated={handleCategoriesUpdated}
+          onBannersUpdated={handleBannersUpdated}
           onOpenInvoice={(order) => setInvoiceOrder(order)}
         />
       )}

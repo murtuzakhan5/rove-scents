@@ -21,7 +21,16 @@ import {
   X,
   AlertCircle,
   LogOut,
-  KeyRound
+  KeyRound,
+  Sliders,
+  Image as ImageIcon,
+  Database,
+  Server,
+  CheckCircle2,
+  AlertTriangle,
+  Eye,
+  EyeOff,
+  Sparkles
 } from 'lucide-react';
 
 export default function AdminDashboard({
@@ -32,13 +41,16 @@ export default function AdminDashboard({
   reviews,
   settings,
   categories,
+  banners,
+  dbStatus,
   onRefreshData,
   onOpenInvoice,
   onProductSaved,
   onProductDeleted,
-  onCategoriesUpdated
+  onCategoriesUpdated,
+  onBannersUpdated
 }) {
-  const [activeTab, setActiveTab] = useState('overview'); // overview, products, categories, orders, coupons, settings, reviews
+  const [activeTab, setActiveTab] = useState('overview'); // overview, products, categories, banners, orders, coupons, settings, reviews
 
   // Product Form State
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
@@ -93,6 +105,259 @@ export default function AdminDashboard({
   const [newCategory, setNewCategory] = useState({ id: '', name: '', image: '/images/cat-all.jpg' });
   const [editingCategory, setEditingCategory] = useState(null);
   const [savingCategories, setSavingCategories] = useState(false);
+
+  // Hero Banners State
+  const defaultInitialBanners = [
+    {
+      id: 'slide-rukh',
+      productId: 'prod-rukh',
+      isCollection: false,
+      tag: 'HAUTE PARFUMERIE • 2026 FLAGSHIP RELEASE',
+      badge: 'TOP SELLER',
+      title: 'ROVE RUKH',
+      arabic: 'رُخ',
+      genre: 'EAU DE PARFUM FOR MEN • 50 ML',
+      subtitle: 'The pinnacle of masculine refinement. Captured amid imperial dark stone and golden water reflections, blending Italian Bergamot, Tuscan Iris, and Smoked Golden Amber.',
+      price: 2650,
+      comparePrice: 3950,
+      bannerImage: '/images/rove-rukh-banner.jpg',
+      bottleImage: '/images/bottle-rukh.jpg',
+      btnText: 'BUY NOW (COD) — RS. 2,650',
+      order: 1,
+      isActive: true
+    },
+    {
+      id: 'slide-raaz',
+      productId: 'prod-raaz',
+      isCollection: false,
+      tag: 'DARK GOLD LUXURY • WOMAN SIGNATURE',
+      badge: 'MYSTERIOUS SEDUCTION',
+      title: 'ROVE RAAZ',
+      arabic: 'راز',
+      genre: 'EAU DE PARFUM FOR WOMEN • 50 ML',
+      subtitle: 'An enigmatic elixir of dark marble elegance. Radiant white blossoms and golden honeyed nectar dissolving into creamy cashmere and smoky black vanilla.',
+      price: 2650,
+      comparePrice: 3950,
+      bannerImage: '/images/rove-raaz-banner.jpg',
+      bottleImage: '/images/bottle-raaz.jpg',
+      btnText: 'BUY NOW (COD) — RS. 2,650',
+      order: 2,
+      isActive: true
+    },
+    {
+      id: 'slide-afsana',
+      productId: 'prod-afsana',
+      isCollection: false,
+      tag: 'GOLDEN HOUR FLORAL POETRY',
+      badge: 'ROMANTIC ESSENCE',
+      title: 'ROVE AFSANA',
+      arabic: 'افسانہ',
+      genre: 'EAU DE PARFUM FOR WOMEN • 50 ML',
+      subtitle: 'A tale of irresistible beauty. Sun-ripened golden peaches, wild forest berries, and Damask pink roses suspended in golden sunset amber.',
+      price: 2650,
+      comparePrice: 3950,
+      bannerImage: '/images/rove-afsana-banner.jpg',
+      bottleImage: '/images/bottle-afsana.jpg',
+      btnText: 'BUY NOW (COD) — RS. 2,650',
+      order: 3,
+      isActive: true
+    },
+    {
+      id: 'slide-all-collection',
+      productId: null,
+      isCollection: true,
+      tag: 'THE SIGNATURE ANTHOLOGY • 4 MASTERPIECES',
+      badge: 'A FRAGRANCE FOR EVERY STORY',
+      title: 'ROVE SCENTS',
+      arabic: 'مجموعہ',
+      genre: 'NAZ • AFSANA • RAAZ • RUKH',
+      subtitle: 'From golden sunsets to mysterious midnight whispers. Discover the complete luxury collection crafted with 35% pure French fragrance oils for 16+ hours of prestige.',
+      price: 2490,
+      comparePrice: 3800,
+      bannerImage: '/images/rove-all-collection-banner.jpg',
+      bottleImage: '/images/bottle-rukh.jpg',
+      btnText: 'SHOP ALL PRODUCTS',
+      order: 4,
+      isActive: true
+    }
+  ];
+
+  const [bannersList, setBannersList] = useState(() => {
+    if (banners && Array.isArray(banners) && banners.length > 0) return banners;
+    try {
+      const local = JSON.parse(localStorage.getItem('rove_custom_banners') || '[]');
+      if (Array.isArray(local) && local.length > 0) return local;
+    } catch (e) {}
+    return defaultInitialBanners;
+  });
+
+  React.useEffect(() => {
+    if (banners && Array.isArray(banners) && banners.length > 0) {
+      setBannersList(banners);
+    }
+  }, [banners]);
+
+  const [isBannerModalOpen, setIsBannerModalOpen] = useState(false);
+  const [editingBanner, setEditingBanner] = useState(null);
+  const [isMongoModalOpen, setIsMongoModalOpen] = useState(false);
+  const [uploadingBannerImage, setUploadingBannerImage] = useState(false);
+  const [savingBanner, setSavingBanner] = useState(false);
+
+  const [bannerForm, setBannerForm] = useState({
+    id: '',
+    title: '',
+    arabic: '',
+    genre: '',
+    tag: '',
+    badge: 'NEW ARRIVAL',
+    subtitle: '',
+    price: 2650,
+    comparePrice: 3950,
+    bannerImage: '/images/rove-rukh-banner.jpg',
+    bottleImage: '',
+    btnText: 'BUY NOW (COD)',
+    productId: '',
+    isCollection: false,
+    btnLink: '',
+    accentGlow: 'rgba(212, 175, 55, 0.35)',
+    order: 1,
+    isActive: true
+  });
+
+  const openAddBannerModal = () => {
+    setEditingBanner(null);
+    setBannerForm({
+      id: '',
+      title: '',
+      arabic: '',
+      genre: 'EAU DE PARFUM • 50 ML',
+      tag: 'HAUTE PARFUMERIE COLLECTION',
+      badge: 'TOP SELLER',
+      subtitle: '',
+      price: 2650,
+      comparePrice: 3950,
+      bannerImage: '/images/rove-rukh-banner.jpg',
+      bottleImage: '/images/bottle-rukh.jpg',
+      btnText: 'BUY NOW (COD)',
+      productId: (products && products[0]?.id) || '',
+      isCollection: false,
+      btnLink: '',
+      accentGlow: 'rgba(212, 175, 55, 0.35)',
+      order: (bannersList?.length || 0) + 1,
+      isActive: true
+    });
+    setIsBannerModalOpen(true);
+  };
+
+  const openEditBannerModal = (banner) => {
+    setEditingBanner(banner);
+    setBannerForm({
+      id: banner.id || '',
+      title: banner.title || '',
+      arabic: banner.arabic || '',
+      genre: banner.genre || '',
+      tag: banner.tag || '',
+      badge: banner.badge || '',
+      subtitle: banner.subtitle || '',
+      price: banner.price || 2650,
+      comparePrice: banner.comparePrice || 3950,
+      bannerImage: banner.bannerImage || '',
+      bottleImage: banner.bottleImage || '',
+      btnText: banner.btnText || 'BUY NOW (COD)',
+      productId: banner.productId || '',
+      isCollection: banner.isCollection || false,
+      btnLink: banner.btnLink || '',
+      accentGlow: banner.accentGlow || 'rgba(212, 175, 55, 0.35)',
+      order: banner.order || 1,
+      isActive: banner.isActive !== false
+    });
+    setIsBannerModalOpen(true);
+  };
+
+  const handleBannerImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploadingBannerImage(true);
+    try {
+      const dataUrl = await fileToDataUrl(file, 1600, 900, 0.8);
+      if (dataUrl) {
+        setBannerForm(prev => ({ ...prev, bannerImage: dataUrl }));
+      }
+    } catch (err) {
+      console.error('Banner image upload error:', err);
+    } finally {
+      setUploadingBannerImage(false);
+    }
+  };
+
+  const handleSaveBanner = async (e) => {
+    e.preventDefault();
+    setSavingBanner(true);
+    const updatedBanner = editingBanner
+      ? { ...editingBanner, ...bannerForm }
+      : {
+          id: bannerForm.id || ('slide-' + Date.now()),
+          ...bannerForm
+        };
+
+    const nextList = editingBanner
+      ? bannersList.map(b => b.id === updatedBanner.id ? updatedBanner : b)
+      : [...bannersList, updatedBanner];
+
+    setBannersList(nextList);
+    try {
+      localStorage.setItem('rove_custom_banners', JSON.stringify(nextList));
+    } catch (err) {}
+
+    if (onBannersUpdated) onBannersUpdated(nextList);
+    setIsBannerModalOpen(false);
+
+    try {
+      const url = editingBanner ? `/api/banners/${editingBanner.id}` : '/api/banners';
+      const method = editingBanner ? 'PUT' : 'POST';
+      await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedBanner)
+      });
+    } catch (err) {
+      console.warn('API banner sync warning:', err);
+    } finally {
+      setSavingBanner(false);
+    }
+  };
+
+  const handleDeleteBanner = async (id, title) => {
+    if (!window.confirm(`Delete banner "${title}"?`)) return;
+    const nextList = bannersList.filter(b => b.id !== id);
+    setBannersList(nextList);
+    try {
+      localStorage.setItem('rove_custom_banners', JSON.stringify(nextList));
+    } catch (err) {}
+    if (onBannersUpdated) onBannersUpdated(nextList);
+
+    try {
+      await fetch(`/api/banners/${id}`, { method: 'DELETE' });
+    } catch (err) {}
+  };
+
+  const handleToggleBannerStatus = async (banner) => {
+    const updated = { ...banner, isActive: !banner.isActive };
+    const nextList = bannersList.map(b => b.id === banner.id ? updated : b);
+    setBannersList(nextList);
+    try {
+      localStorage.setItem('rove_custom_banners', JSON.stringify(nextList));
+    } catch (err) {}
+    if (onBannersUpdated) onBannersUpdated(nextList);
+
+    try {
+      await fetch(`/api/banners/${banner.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated)
+      });
+    } catch (err) {}
+  };
 
   // Orders Filter
   const [orderStatusFilter, setOrderStatusFilter] = useState('all');
@@ -500,6 +765,23 @@ export default function AdminDashboard({
         </div>
 
         <div className="flex items-center gap-2.5">
+          {/* Database Connection Indicator */}
+          <button
+            onClick={() => setIsMongoModalOpen(true)}
+            className={`px-3 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-2 transition ${
+              dbStatus?.connected
+                ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300 hover:bg-emerald-900/60'
+                : 'bg-amber-950/60 border-amber-500/40 text-amber-300 hover:bg-amber-900/60'
+            }`}
+            title="Database Connection Status & Lifetime Cloud Setup"
+          >
+            <Database size={13} />
+            <span className="hidden sm:inline">
+              {dbStatus?.connected ? 'MongoDB Cloud Active' : 'Connect MongoDB'}
+            </span>
+            <span className={`w-2 h-2 rounded-full ${dbStatus?.connected ? 'bg-emerald-400' : 'bg-amber-400 animate-pulse'}`} />
+          </button>
+
           <button
             onClick={() => {
               sessionStorage.removeItem('rove_admin_token');
@@ -576,6 +858,23 @@ export default function AdminDashboard({
               </div>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#222] text-zinc-300">
                 {categoriesList?.length || 0}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('banners')}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs font-semibold tracking-wider transition ${
+                activeTab === 'banners'
+                  ? 'bg-gold-500/20 text-gold-300 border-l-4 border-gold-400 font-bold'
+                  : 'text-zinc-400 hover:bg-[#1a1a1a] hover:text-white'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Sliders size={16} />
+                <span>Hero Banners</span>
+              </div>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#222] text-zinc-300">
+                {bannersList?.length || 0}
               </span>
             </button>
 
@@ -1131,6 +1430,168 @@ export default function AdminDashboard({
                       </div>
                     </div>
                   </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ================= TAB: HERO BANNERS (16:9 SLIDER) ================= */}
+          {activeTab === 'banners' && (
+            <div className="space-y-6 max-w-6xl">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-2xl font-serif font-bold text-white flex items-center gap-2.5">
+                    <span>Hero Banners & Slider Manager</span>
+                    <span className="text-xs px-2.5 py-0.5 rounded-full bg-gold-500/20 text-gold-300 font-sans font-bold border border-gold-500/30">
+                      16:9 Widescreen
+                    </span>
+                  </h2>
+                  <p className="text-xs text-zinc-400 mt-1">
+                    Customise the luxury homepage slider. Edit background images, pricing, headlines, and call-to-action buttons in real-time.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={openAddBannerModal}
+                    className="px-4 py-2 rounded-lg bg-gold-500 hover:bg-gold-400 text-black font-bold text-xs uppercase tracking-wider transition flex items-center gap-1.5 shadow"
+                  >
+                    <Plus size={15} />
+                    <span>Add New Banner</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Banners Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {(bannersList || []).map((banner, idx) => {
+                  const linkedProd = banner.productId ? products?.find(p => p.id === banner.productId) : null;
+                  return (
+                    <div 
+                      key={banner.id || idx}
+                      className="bg-[#141414] border border-[#242424] rounded-2xl overflow-hidden flex flex-col group hover:border-gold-500/40 transition shadow-lg"
+                    >
+                      {/* Banner 16:9 Preview */}
+                      <div className="relative w-full aspect-[16/9] bg-black overflow-hidden border-b border-[#222]">
+                        <img 
+                          src={banner.bannerImage || '/images/rove-rukh-banner.jpg'} 
+                          alt={banner.title} 
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                        />
+                        {/* Overlay gradient */}
+                        <div className="absolute inset-y-0 left-0 w-[60%] bg-gradient-to-r from-black/90 via-black/50 to-transparent pointer-events-none" />
+                        
+                        {/* Status Badges */}
+                        <div className="absolute top-3 left-3 flex items-center gap-2">
+                          <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                            banner.isActive !== false ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/40' : 'bg-zinc-800 text-zinc-400 border border-zinc-700'
+                          }`}>
+                            {banner.isActive !== false ? 'Active on Home' : 'Hidden / Draft'}
+                          </span>
+                          <span className="px-2 py-0.5 rounded bg-black/80 text-gold-300 border border-gold-500/30 text-[10px] font-mono">
+                            Order #{banner.order || idx + 1}
+                          </span>
+                        </div>
+
+                        {/* Top-Right Badge Preview */}
+                        {banner.badge && (
+                          <div className="absolute top-3 right-3">
+                            <span className="px-2 py-0.5 rounded bg-black/80 backdrop-blur-sm border border-gold-500/40 text-gold-300 text-[10px] font-bold uppercase tracking-wider">
+                              {banner.badge}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Overlaid Title & Pricing Preview */}
+                        <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between pointer-events-none">
+                          <div>
+                            <div className="text-[10px] uppercase font-bold text-gold-400 tracking-wider">
+                              {banner.tag || 'LUXURY IMPRESSION'}
+                            </div>
+                            <h3 className="text-lg sm:text-xl font-serif font-bold text-white flex items-center gap-2">
+                              <span>{banner.title}</span>
+                              {banner.arabic && <span className="text-gold-300 font-serif">{banner.arabic}</span>}
+                            </h3>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-base sm:text-lg font-bold text-gold-300 font-serif">
+                              Rs. {Number(banner.price || 0).toLocaleString()}
+                            </div>
+                            {banner.comparePrice && (
+                              <div className="text-[11px] text-zinc-400 line-through">
+                                Rs. {Number(banner.comparePrice).toLocaleString()}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Card Information */}
+                      <div className="p-4 flex-grow flex flex-col justify-between space-y-3">
+                        <div className="space-y-1.5">
+                          <p className="text-xs text-zinc-300 line-clamp-2 leading-relaxed">
+                            {banner.subtitle || 'No description provided.'}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px] text-zinc-400">
+                            <span>Button: <strong className="text-zinc-200">{banner.btnText || 'BUY NOW'}</strong></span>
+                            <span>•</span>
+                            <span>Target: <strong className="text-gold-300">{linkedProd ? linkedProd.name : 'All Perfumes'}</strong></span>
+                          </div>
+                        </div>
+
+                        {/* Actions Toolbar */}
+                        <div className="flex items-center justify-between pt-3 border-t border-[#222]">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleBannerStatus(banner)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition ${
+                              banner.isActive !== false
+                                ? 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                                : 'bg-emerald-950 text-emerald-300 hover:bg-emerald-900 border border-emerald-500/30'
+                            }`}
+                          >
+                            {banner.isActive !== false ? <EyeOff size={13} /> : <Eye size={13} />}
+                            <span>{banner.isActive !== false ? 'Hide' : 'Show on Home'}</span>
+                          </button>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => openEditBannerModal(banner)}
+                              className="px-3.5 py-1.5 rounded-lg bg-gold-500/20 hover:bg-gold-500 hover:text-black border border-gold-500/40 text-gold-300 font-bold text-xs flex items-center gap-1.5 transition"
+                            >
+                              <Edit3 size={13} />
+                              <span>Edit</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteBanner(banner.id, banner.title)}
+                              className="p-1.5 rounded-lg bg-red-950/60 hover:bg-red-900 text-red-400 border border-red-500/30 transition"
+                              title="Delete Banner"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {(bannersList || []).length === 0 && (
+                <div className="text-center py-16 bg-[#141414] border border-[#222] rounded-2xl p-8 space-y-4">
+                  <Sliders size={36} className="text-gold-400 mx-auto" />
+                  <h3 className="text-lg font-bold text-white font-serif">No Custom Banners Yet</h3>
+                  <p className="text-xs text-zinc-400 max-w-md mx-auto">
+                    The homepage is currently displaying the default cinematic slides. Create a custom banner to show your custom products and offers.
+                  </p>
+                  <button
+                    onClick={openAddBannerModal}
+                    className="px-5 py-2 rounded-lg bg-gold-500 hover:bg-gold-400 text-black font-bold text-xs uppercase tracking-wider"
+                  >
+                    + Create First Banner
+                  </button>
                 </div>
               )}
             </div>
@@ -1959,6 +2420,345 @@ export default function AdminDashboard({
               </div>
 
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ================= HERO BANNER CREATE / EDIT MODAL ================= */}
+      {isBannerModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="relative bg-[#141414] border border-gold-500/40 rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-5 my-8">
+            <button
+              onClick={() => setIsBannerModalOpen(false)}
+              className="absolute top-4 right-4 p-2 text-zinc-400 hover:text-white rounded-lg hover:bg-[#222] transition"
+            >
+              <X size={20} />
+            </button>
+
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-lg bg-gold-500/20 text-gold-400 border border-gold-500/30">
+                <Sliders size={20} />
+              </div>
+              <div>
+                <h3 className="font-serif text-lg font-bold text-white">
+                  {editingBanner ? `Edit Banner: ${editingBanner.title}` : 'Create New 16:9 Hero Banner'}
+                </h3>
+                <p className="text-xs text-zinc-400">
+                  Configure real-time title, pricing, call-to-action, and high-resolution background imagery.
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleSaveBanner} className="space-y-4">
+              {/* Banner Background Image (16:9 Preview & Uploader) */}
+              <div>
+                <label className="block text-xs font-semibold text-zinc-200 mb-1">
+                  16:9 Widescreen Banner Image *
+                </label>
+                <div className="space-y-2">
+                  <div className="relative w-full aspect-[16/9] rounded-xl overflow-hidden border border-[#333] bg-black">
+                    <img 
+                      src={bannerForm.bannerImage || '/images/rove-rukh-banner.jpg'} 
+                      alt="Banner Preview" 
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-black/80 backdrop-blur-sm text-[10px] text-zinc-300 font-mono">
+                      16:9 Live Preview
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      required
+                      value={bannerForm.bannerImage}
+                      onChange={(e) => setBannerForm({ ...bannerForm, bannerImage: e.target.value })}
+                      placeholder="/images/rove-rukh-banner.jpg or https://..."
+                      className="flex-grow bg-[#1c1c1c] border border-[#333] rounded px-3 py-2 text-xs text-white focus:outline-none focus:border-gold-500"
+                    />
+                    <label className="px-4 py-2 rounded bg-gold-500/20 hover:bg-gold-500 hover:text-black border border-gold-500/40 text-gold-300 text-xs font-bold cursor-pointer transition flex items-center gap-1.5 shrink-0">
+                      <Upload size={14} />
+                      <span>{uploadingBannerImage ? 'Uploading...' : 'Upload PC'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleBannerImageUpload}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Title & Arabic */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] text-zinc-300 font-semibold mb-1">Banner Title *</label>
+                  <input
+                    type="text"
+                    required
+                    value={bannerForm.title}
+                    onChange={(e) => setBannerForm({ ...bannerForm, title: e.target.value })}
+                    placeholder="e.g. ROVE RUKH"
+                    className="w-full bg-[#1c1c1c] border border-[#333] rounded px-3 py-2 text-xs text-white focus:outline-none focus:border-gold-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-zinc-300 font-semibold mb-1">Arabic Calligraphy / Name</label>
+                  <input
+                    type="text"
+                    value={bannerForm.arabic}
+                    onChange={(e) => setBannerForm({ ...bannerForm, arabic: e.target.value })}
+                    placeholder="e.g. رُخ"
+                    className="w-full bg-[#1c1c1c] border border-[#333] rounded px-3 py-2 text-xs text-white focus:outline-none focus:border-gold-500 font-serif"
+                  />
+                </div>
+              </div>
+
+              {/* Tag & Badge */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] text-zinc-300 font-semibold mb-1">Tagline / Header Line</label>
+                  <input
+                    type="text"
+                    value={bannerForm.tag}
+                    onChange={(e) => setBannerForm({ ...bannerForm, tag: e.target.value })}
+                    placeholder="e.g. HAUTE PARFUMERIE • 2026 FLAGSHIP RELEASE"
+                    className="w-full bg-[#1c1c1c] border border-[#333] rounded px-3 py-2 text-xs text-white focus:outline-none focus:border-gold-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-zinc-300 font-semibold mb-1">Badge (Top Left / Right)</label>
+                  <input
+                    type="text"
+                    value={bannerForm.badge}
+                    onChange={(e) => setBannerForm({ ...bannerForm, badge: e.target.value })}
+                    placeholder="e.g. TOP SELLER / 40% OFF"
+                    className="w-full bg-[#1c1c1c] border border-[#333] rounded px-3 py-2 text-xs text-white focus:outline-none focus:border-gold-500"
+                  />
+                </div>
+              </div>
+
+              {/* Price & Compare Price */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] text-zinc-300 font-semibold mb-1">Selling Price (PKR) *</label>
+                  <input
+                    type="number"
+                    required
+                    value={bannerForm.price}
+                    onChange={(e) => setBannerForm({ ...bannerForm, price: Number(e.target.value) })}
+                    className="w-full bg-[#1c1c1c] border border-[#333] rounded px-3 py-2 text-xs text-white focus:outline-none focus:border-gold-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-zinc-300 font-semibold mb-1">Crossed / Old Price (PKR)</label>
+                  <input
+                    type="number"
+                    value={bannerForm.comparePrice}
+                    onChange={(e) => setBannerForm({ ...bannerForm, comparePrice: Number(e.target.value) })}
+                    className="w-full bg-[#1c1c1c] border border-[#333] rounded px-3 py-2 text-xs text-white focus:outline-none focus:border-gold-500"
+                  />
+                </div>
+              </div>
+
+              {/* Subtitle / Marketing Pitch */}
+              <div>
+                <label className="block text-[11px] text-zinc-300 font-semibold mb-1">Marketing Description / Subtitle *</label>
+                <textarea
+                  rows={2}
+                  required
+                  value={bannerForm.subtitle}
+                  onChange={(e) => setBannerForm({ ...bannerForm, subtitle: e.target.value })}
+                  placeholder="The pinnacle of masculine refinement. Capturing Italian Bergamot and golden smoked amber..."
+                  className="w-full bg-[#1c1c1c] border border-[#333] rounded px-3 py-2 text-xs text-white focus:outline-none focus:border-gold-500 resize-none"
+                />
+              </div>
+
+              {/* Button Text & Linked Product */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] text-zinc-300 font-semibold mb-1">Button Text</label>
+                  <input
+                    type="text"
+                    value={bannerForm.btnText}
+                    onChange={(e) => setBannerForm({ ...bannerForm, btnText: e.target.value })}
+                    placeholder="e.g. BUY NOW (COD) — RS. 2,650"
+                    className="w-full bg-[#1c1c1c] border border-[#333] rounded px-3 py-2 text-xs text-white focus:outline-none focus:border-gold-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-zinc-300 font-semibold mb-1">Link to Perfume Product</label>
+                  <select
+                    value={bannerForm.productId || ''}
+                    onChange={(e) => setBannerForm({ ...bannerForm, productId: e.target.value, isCollection: !e.target.value })}
+                    className="w-full bg-[#1c1c1c] border border-[#333] rounded px-3 py-2 text-xs text-white focus:outline-none focus:border-gold-500"
+                  >
+                    <option value="" className="bg-[#181818] text-white">None (Opens All Fragrances Catalog)</option>
+                    {(products || []).map(p => (
+                      <option key={p.id} value={p.id} className="bg-[#181818] text-white">
+                        {p.name} (Rs. {p.price})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Order & Active Status */}
+              <div className="flex items-center justify-between pt-2">
+                <div className="flex items-center gap-2">
+                  <label className="text-[11px] text-zinc-300 font-semibold">Slider Order:</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={bannerForm.order}
+                    onChange={(e) => setBannerForm({ ...bannerForm, order: Number(e.target.value) })}
+                    className="w-16 bg-[#1c1c1c] border border-[#333] rounded px-2 py-1 text-xs text-white text-center focus:outline-none"
+                  />
+                </div>
+
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-zinc-200">
+                  <input
+                    type="checkbox"
+                    checked={bannerForm.isActive}
+                    onChange={(e) => setBannerForm({ ...bannerForm, isActive: e.target.checked })}
+                    className="w-4 h-4 rounded text-gold-500 focus:ring-gold-500 bg-[#1c1c1c] border-[#333]"
+                  />
+                  <span>Active & Visible on Homepage Slider</span>
+                </label>
+              </div>
+
+              {/* Submit Buttons */}
+              <div className="flex justify-end gap-2 pt-4 border-t border-[#222]">
+                <button
+                  type="button"
+                  onClick={() => setIsBannerModalOpen(false)}
+                  className="px-4 py-2 rounded-lg bg-[#222] text-zinc-400 text-xs hover:text-white transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingBanner}
+                  className="px-6 py-2 rounded-lg bg-gold-500 hover:bg-gold-400 text-black font-bold text-xs uppercase tracking-wider transition shadow flex items-center gap-1.5"
+                >
+                  {savingBanner ? (
+                    <span>Saving Banner...</span>
+                  ) : (
+                    <span>{editingBanner ? 'Save Changes' : 'Create Banner'}</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ================= MONGODB CLOUD DATABASE SETUP MODAL ================= */}
+      {isMongoModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="relative bg-[#141414] border border-gold-500/40 rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-5 my-8">
+            <button
+              onClick={() => setIsMongoModalOpen(false)}
+              className="absolute top-4 right-4 p-2 text-zinc-400 hover:text-white rounded-lg hover:bg-[#222] transition"
+            >
+              <X size={20} />
+            </button>
+
+            <div className="flex items-center gap-3">
+              <div className={`p-2.5 rounded-xl border ${
+                dbStatus?.connected ? 'bg-emerald-950/80 border-emerald-500/40 text-emerald-400' : 'bg-amber-950/80 border-amber-500/40 text-amber-400'
+              }`}>
+                <Database size={24} />
+              </div>
+              <div>
+                <h3 className="font-serif text-lg font-bold text-white flex items-center gap-2">
+                  <span>MongoDB Cloud Storage</span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                    dbStatus?.connected ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/40' : 'bg-amber-950 text-amber-300 border border-amber-500/40'
+                  }`}>
+                    {dbStatus?.connected ? 'Active & Preserved' : 'Setup Required'}
+                  </span>
+                </h3>
+                <p className="text-xs text-zinc-400">
+                  Lifetime Cloud Persistence for Products, Banners, Categories & Orders
+                </p>
+              </div>
+            </div>
+
+            {/* Status Card */}
+            <div className={`p-4 rounded-xl border text-xs leading-relaxed space-y-1.5 ${
+              dbStatus?.connected
+                ? 'bg-emerald-950/30 border-emerald-500/30 text-emerald-200'
+                : 'bg-amber-950/30 border-amber-500/30 text-amber-200'
+            }`}>
+              <div className="font-bold flex items-center gap-1.5">
+                {dbStatus?.connected ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}
+                <span>
+                  {dbStatus?.connected ? 'MongoDB Cloud is Active!' : 'Running in Local Storage / In-Memory Fallback'}
+                </span>
+              </div>
+              <p className="text-[11px] text-zinc-300">
+                {dbStatus?.connected
+                  ? 'Your store is connected to MongoDB Cloud. Every single product, banner, order, and review you add or edit is stored permanently for lifetime preservation across all devices.'
+                  : 'Currently data is saving to your browser and local file. When refreshing on Vercel or visiting from other devices, connect free MongoDB Atlas below so your changes are 100% permanent forever.'}
+              </p>
+            </div>
+
+            {/* Quick 2-Minute Setup Steps */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold text-gold-300 uppercase tracking-wider">
+                How to Connect Free MongoDB Atlas (2 Minutes)
+              </h4>
+
+              <div className="space-y-2 text-xs text-zinc-300">
+                <div className="p-3 rounded-lg bg-[#1a1a1a] border border-[#262626] flex gap-3 items-start">
+                  <span className="w-5 h-5 rounded-full bg-gold-500/20 text-gold-300 flex items-center justify-center font-bold shrink-0 text-[11px]">1</span>
+                  <div>
+                    <strong className="text-white">Create a Free MongoDB Atlas Account:</strong>
+                    <p className="text-zinc-400 text-[11px] mt-0.5">
+                      Go to <a href="https://www.mongodb.com/atlas" target="_blank" rel="noreferrer" className="text-gold-400 underline font-semibold">mongodb.com/atlas</a> and create a free Shared Cluster (M0 Free Tier - completely free forever).
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-lg bg-[#1a1a1a] border border-[#262626] flex gap-3 items-start">
+                  <span className="w-5 h-5 rounded-full bg-gold-500/20 text-gold-300 flex items-center justify-center font-bold shrink-0 text-[11px]">2</span>
+                  <div>
+                    <strong className="text-white">Copy your Connection String:</strong>
+                    <p className="text-zinc-400 text-[11px] mt-0.5">
+                      Click <strong>Connect</strong> &gt; <strong>Drivers</strong> &gt; Copy URI:
+                      <code className="block mt-1 p-1.5 rounded bg-black text-[10px] font-mono text-emerald-400 overflow-x-auto select-all">
+                        mongodb+srv://username:password@cluster0.xxxx.mongodb.net/rove-scents?retryWrites=true&w=majority
+                      </code>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-lg bg-[#1a1a1a] border border-[#262626] flex gap-3 items-start">
+                  <span className="w-5 h-5 rounded-full bg-gold-500/20 text-gold-300 flex items-center justify-center font-bold shrink-0 text-[11px]">3</span>
+                  <div>
+                    <strong className="text-white">Add MONGODB_URI in Vercel or .env:</strong>
+                    <p className="text-zinc-400 text-[11px] mt-0.5">
+                      In Vercel: Project &gt; <strong>Settings</strong> &gt; <strong>Environment Variables</strong> &gt; Name: <code className="text-gold-300">MONGODB_URI</code> &gt; Value: your URI.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-[#222]">
+              <button
+                type="button"
+                onClick={() => {
+                  onRefreshData();
+                  setIsMongoModalOpen(false);
+                }}
+                className="px-5 py-2 rounded-lg bg-gold-500 hover:bg-gold-400 text-black font-bold text-xs uppercase tracking-wider transition shadow"
+              >
+                Close & Check Status
+              </button>
+            </div>
           </div>
         </div>
       )}

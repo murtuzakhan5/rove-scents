@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Sparkles, ArrowRight, ShieldCheck, Clock, Truck, RefreshCw, ChevronLeft, ChevronRight, Star, Flame, Eye } from 'lucide-react';
 
-export default function AutoHeroSlider({ onSelectProduct, onDirectCheckout, onShopAll, products, settings }) {
+export default function AutoHeroSlider({ onSelectProduct, onDirectCheckout, onShopAll, products, settings, banners }) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
   const timerRef = useRef(null);
 
-  // Widescreen Luxury Cinematic Banners with Left-Aligned Overlaid Typography
-  const slides = [
+  // Widescreen Luxury Cinematic Default Banners
+  const defaultSlides = [
     {
       id: 'slide-rukh',
       productId: 'prod-rukh',
@@ -98,9 +98,15 @@ export default function AutoHeroSlider({ onSelectProduct, onDirectCheckout, onSh
     }
   ];
 
+  // Active custom banners from MongoDB/Admin or default slides
+  const activeBanners = (banners && Array.isArray(banners) && banners.length > 0)
+    ? banners.filter(b => b.isActive !== false)
+    : [];
+  const slides = activeBanners.length > 0 ? activeBanners : defaultSlides;
+
   // Auto-play timer (5.5 seconds)
   useEffect(() => {
-    if (!isHovered) {
+    if (!isHovered && slides.length > 1) {
       timerRef.current = setInterval(() => {
         setCurrentSlide((prev) => (prev + 1) % slides.length);
       }, 5500);
@@ -108,7 +114,8 @@ export default function AutoHeroSlider({ onSelectProduct, onDirectCheckout, onSh
     return () => clearInterval(timerRef.current);
   }, [isHovered, slides.length]);
 
-  const slide = slides[currentSlide];
+  const safeIndex = currentSlide >= slides.length ? 0 : currentSlide;
+  const slide = slides[safeIndex] || defaultSlides[0];
   const targetProduct = slide.productId ? (products || []).find(p => p.id === slide.productId) : null;
 
   const handleNext = () => {

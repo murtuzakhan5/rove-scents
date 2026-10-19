@@ -1,9 +1,19 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import multer from 'multer';
+
+import { connectDB, defaultBanners } from './db.js';
+import Product from './models/Product.js';
+import Category from './models/Category.js';
+import Banner from './models/Banner.js';
+import Order from './models/Order.js';
+import Coupon from './models/Coupon.js';
+import Setting from './models/Setting.js';
+import Review from './models/Review.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -14,8 +24,8 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors());
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: '15mb' }));
+app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 
 // Static directories
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -47,16 +57,18 @@ function getDB() {
   try {
     if (fs.existsSync(tmpDbPath)) {
       cachedDB = JSON.parse(fs.readFileSync(tmpDbPath, 'utf8'));
+      if (!cachedDB.banners) cachedDB.banners = defaultBanners;
       return cachedDB;
     }
   } catch (e) {}
 
   try {
     cachedDB = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
+    if (!cachedDB.banners) cachedDB.banners = defaultBanners;
     return cachedDB;
   } catch (err) {
     console.error('Error reading db.json:', err);
-    return { settings: {}, categories: [], products: [], coupons: [], orders: [], reviews: [] };
+    return { settings: {}, categories: [], products: [], banners: defaultBanners, coupons: [], orders: [], reviews: [] };
   }
 }
 
@@ -73,15 +85,59 @@ function saveDB(data) {
   return true;
 }
 
+// Middleware to attempt MongoDB connection on every API request
+app.use(async (req, res, next) => {
+  try {
+    req.db = await connectDB();
+  } catch (e) {
+    req.db = null;
+  }
+  next();
+});
+
 // ==================== API ROUTES ====================
 
+// 0. Database Status
+app.get('/api/database-status', async (req, res) => {
+  const isMongo = !!req.db;
+  res.json({
+    connected: isMongo,
+    type: isMongo ? 'mongodb' : 'local_json',
+    mongoUriConfigured: !!(process.env.MONGODB_URI && process.env.MONGODB_URI.trim())
+  });
+});
+
 // 1. Settings
-app.get('/api/settings', (req, res) => {
+app.get('/api/settings', async (req, res) => {
+  try {
+    if (req.db) {
+      let doc = await Setting.findOne({ key: 'store_settings' }).lean();
+      if (!doc) {
+        const db = getDB();
+        doc = await Setting.create({ key: 'store_settings', ...(db.settings || {}) });
+      }
+      return res.json(doc);
+    }
+  } catch (err) {
+    console.warn('MongoDB get settings fallback:', err.message);
+  }
   const db = getDB();
   res.json(db.settings);
 });
 
-app.put('/api/settings', (req, res) => {
+app.put('/api/settings', async (req, res) => {
+  try {
+    if (req.db) {
+      const updated = await Setting.findOneAndUpdate(
+        { key: 'store_settings' },
+        { $set: req.body },
+        { upsert: true, new: true }
+      ).lean();
+      return res.json({ success: true, settings: updated });
+    }
+  } catch (err) {
+    console.warn('MongoDB put settings fallback:', err.message);
+  }
   const db = getDB();
   db.settings = { ...db.settings, ...req.body };
   saveDB(db);
@@ -89,16 +145,81 @@ app.put('/api/settings', (req, res) => {
 });
 
 // 2. Categories
-app.get('/api/categories', (req, res) => {
+app.get('/api/categories', async (req, res) => {
+  try {
+    if (req.db) {
+      const cats = await Category.find({}).lean();
+      if (cats && cats.length > 0) {
+        return res.json(cats);
+      }
+    }
+  } catch (err) {
+    console.warn('MongoDB get categories fallback:', err.message);
+  }
   const db = getDB();
-  res.json(db.categories);
+  res.json(db.categories || []);
+});
+
+app.put('/api/categories', async (req, res) => {
+  try {
+    if (req.db && Array.isArray(req.body)) {
+      await Category.deleteMany({});
+      if (req.body.length > 0) {
+        await Category.insertMany(req.body);
+      }
+      return res.json({ success: true, categories: req.body });
+    }
+  } catch (err) {
+    console.warn('MongoDB put categories fallback:', err.message);
+  }
+  const db = getDB();
+  db.categories = req.body;
+  saveDB(db);
+  res.json({ success: true, categories: db.categories });
 });
 
 // 3. Products
-app.get('/api/products', (req, res) => {
-  const db = getDB();
+app.get('/api/products', async (req, res) => {
   const { category, search, sort } = req.query;
-  let list = [...db.products];
+
+  try {
+    if (req.db) {
+      const query = {};
+      if (category && category !== 'all') {
+        query.category = { $regex: new RegExp(`^${category}$`, 'i') };
+      }
+      if (search) {
+        const qRegex = new RegExp(search, 'i');
+        query.$or = [
+          { name: qRegex },
+          { inspiredBy: qRegex },
+          { shortDesc: qRegex }
+        ];
+      }
+
+      let queryBuilder = Product.find(query).lean();
+      if (sort === 'price-low') {
+        queryBuilder = queryBuilder.sort({ price: 1 });
+      } else if (sort === 'price-high') {
+        queryBuilder = queryBuilder.sort({ price: -1 });
+      } else if (sort === 'rating') {
+        queryBuilder = queryBuilder.sort({ rating: -1 });
+      } else {
+        queryBuilder = queryBuilder.sort({ createdAt: -1 });
+      }
+
+      const prods = await queryBuilder.exec();
+      if (prods && prods.length > 0) {
+        return res.json(prods);
+      }
+    }
+  } catch (err) {
+    console.warn('MongoDB get products fallback:', err.message);
+  }
+
+  // Fallback to local db.json
+  const db = getDB();
+  let list = [...(db.products || [])];
 
   if (category && category !== 'all') {
     list = list.filter(p => p.category?.toLowerCase() === category.toLowerCase());
@@ -107,7 +228,7 @@ app.get('/api/products', (req, res) => {
   if (search) {
     const q = search.toLowerCase();
     list = list.filter(p => 
-      p.name.toLowerCase().includes(q) || 
+      p.name?.toLowerCase().includes(q) || 
       (p.inspiredBy && p.inspiredBy.toLowerCase().includes(q)) ||
       (p.shortDesc && p.shortDesc.toLowerCase().includes(q))
     );
@@ -124,53 +245,185 @@ app.get('/api/products', (req, res) => {
   res.json(list);
 });
 
-app.get('/api/products/:id', (req, res) => {
+app.get('/api/products/:id', async (req, res) => {
+  try {
+    if (req.db) {
+      const prod = await Product.findOne({ $or: [{ id: req.params.id }, { slug: req.params.id }] }).lean();
+      if (prod) return res.json(prod);
+    }
+  } catch (err) {}
+
   const db = getDB();
-  const prod = db.products.find(p => p.id === req.params.id || p.slug === req.params.id);
+  const prod = (db.products || []).find(p => p.id === req.params.id || p.slug === req.params.id);
   if (!prod) return res.status(404).json({ error: 'Product not found' });
   res.json(prod);
 });
 
-app.post('/api/products', (req, res) => {
-  const db = getDB();
+app.post('/api/products', async (req, res) => {
   const newProduct = {
-    id: 'prod-' + Date.now(),
+    id: req.body.id || ('prod-' + Date.now()),
     slug: (req.body.name || 'perfume').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
     rating: 5.0,
     reviewsCount: 1,
     ...req.body
   };
+
+  try {
+    if (req.db) {
+      await Product.findOneAndUpdate({ id: newProduct.id }, newProduct, { upsert: true, new: true });
+    }
+  } catch (err) {
+    console.warn('MongoDB post product fallback:', err.message);
+  }
+
+  // Dual-write to local DB
+  const db = getDB();
+  if (!db.products) db.products = [];
   db.products.unshift(newProduct);
   saveDB(db);
+
   res.status(201).json(newProduct);
 });
 
-app.put('/api/products/:id', (req, res) => {
+app.put('/api/products/:id', async (req, res) => {
+  try {
+    if (req.db) {
+      const updated = await Product.findOneAndUpdate(
+        { id: req.params.id },
+        { $set: req.body },
+        { new: true, upsert: true }
+      ).lean();
+      // Dual-write to local DB
+      const db = getDB();
+      const idx = (db.products || []).findIndex(p => p.id === req.params.id);
+      if (idx > -1) db.products[idx] = { ...db.products[idx], ...req.body };
+      saveDB(db);
+      return res.json(updated || { id: req.params.id, ...req.body });
+    }
+  } catch (err) {
+    console.warn('MongoDB put product fallback:', err.message);
+  }
+
   const db = getDB();
-  const idx = db.products.findIndex(p => p.id === req.params.id);
-  if (idx === -1) return res.status(404).json({ error: 'Product not found' });
+  const idx = (db.products || []).findIndex(p => p.id === req.params.id);
+  if (idx === -1) {
+    // Create if missing
+    const newP = { id: req.params.id, ...req.body };
+    db.products.unshift(newP);
+    saveDB(db);
+    return res.json(newP);
+  }
 
   db.products[idx] = { ...db.products[idx], ...req.body };
   saveDB(db);
   res.json(db.products[idx]);
 });
 
-app.delete('/api/products/:id', (req, res) => {
+app.delete('/api/products/:id', async (req, res) => {
+  try {
+    if (req.db) {
+      await Product.deleteOne({ id: req.params.id });
+    }
+  } catch (err) {
+    console.warn('MongoDB delete product fallback:', err.message);
+  }
+
   const db = getDB();
-  const initialLen = db.products.length;
-  db.products = db.products.filter(p => p.id !== req.params.id);
-  if (db.products.length === initialLen) return res.status(404).json({ error: 'Product not found' });
+  db.products = (db.products || []).filter(p => p.id !== req.params.id);
   saveDB(db);
   res.json({ success: true, message: 'Product deleted' });
 });
 
-// 4. File Upload (for products, categories & gallery)
+// ==================== 4. BANNERS (HERO SLIDER) ====================
+app.get('/api/banners', async (req, res) => {
+  try {
+    if (req.db) {
+      const banners = await Banner.find({}).sort({ order: 1 }).lean();
+      if (banners && banners.length > 0) {
+        return res.json(banners);
+      }
+    }
+  } catch (err) {
+    console.warn('MongoDB get banners fallback:', err.message);
+  }
+
+  const db = getDB();
+  res.json(db.banners || defaultBanners);
+});
+
+app.post('/api/banners', async (req, res) => {
+  const newBanner = {
+    id: req.body.id || ('banner-' + Date.now()),
+    order: req.body.order || 99,
+    isActive: req.body.isActive !== undefined ? req.body.isActive : true,
+    ...req.body
+  };
+
+  try {
+    if (req.db) {
+      const saved = await Banner.create(newBanner);
+      return res.status(201).json(saved);
+    }
+  } catch (err) {
+    console.warn('MongoDB post banner fallback:', err.message);
+  }
+
+  const db = getDB();
+  if (!db.banners) db.banners = [...defaultBanners];
+  db.banners.push(newBanner);
+  saveDB(db);
+
+  res.status(201).json(newBanner);
+});
+
+app.put('/api/banners/:id', async (req, res) => {
+  try {
+    if (req.db) {
+      const updated = await Banner.findOneAndUpdate(
+        { id: req.params.id },
+        { $set: req.body },
+        { new: true, upsert: true }
+      ).lean();
+      return res.json(updated);
+    }
+  } catch (err) {
+    console.warn('MongoDB put banner fallback:', err.message);
+  }
+
+  const db = getDB();
+  if (!db.banners) db.banners = [...defaultBanners];
+  const idx = db.banners.findIndex(b => b.id === req.params.id);
+  if (idx > -1) {
+    db.banners[idx] = { ...db.banners[idx], ...req.body };
+  } else {
+    db.banners.push({ id: req.params.id, ...req.body });
+  }
+  saveDB(db);
+  res.json(db.banners[idx] || req.body);
+});
+
+app.delete('/api/banners/:id', async (req, res) => {
+  try {
+    if (req.db) {
+      await Banner.deleteOne({ id: req.params.id });
+    }
+  } catch (err) {
+    console.warn('MongoDB delete banner fallback:', err.message);
+  }
+
+  const db = getDB();
+  if (db.banners) {
+    db.banners = db.banners.filter(b => b.id !== req.params.id);
+    saveDB(db);
+  }
+  res.json({ success: true, message: 'Banner deleted' });
+});
+
+// 5. File Upload (for products, categories, banners & gallery)
 app.post('/api/upload', upload.single('image'), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No image file uploaded' });
   }
-
-  // Base64 Data URL is 100% self-contained and never 404s on Vercel, serverless, or CDN
   const mime = req.file.mimetype || 'image/jpeg';
   const base64 = req.file.buffer.toString('base64');
   res.json({ url: `data:${mime};base64,${base64}` });
@@ -190,22 +443,21 @@ app.post('/api/upload-gallery', upload.array('images', 8), (req, res) => {
   res.json({ urls });
 });
 
-// Categories update (including thumbnail and active list)
-app.put('/api/categories', (req, res) => {
-  const db = getDB();
-  db.categories = req.body;
-  saveDB(db);
-  res.json({ success: true, categories: db.categories });
-});
-
-// 5. Orders
-app.get('/api/orders', (req, res) => {
+// 6. Orders
+app.get('/api/orders', async (req, res) => {
+  try {
+    if (req.db) {
+      const orders = await Order.find({}).sort({ createdAt: -1 }).lean();
+      return res.json(orders || []);
+    }
+  } catch (err) {
+    console.warn('MongoDB get orders fallback:', err.message);
+  }
   const db = getDB();
   res.json(db.orders || []);
 });
 
-app.post('/api/orders', (req, res) => {
-  const db = getDB();
+app.post('/api/orders', async (req, res) => {
   const orderId = 'ROVE-' + Math.floor(10000 + Math.random() * 90000);
   const newOrder = {
     id: orderId,
@@ -213,13 +465,35 @@ app.post('/api/orders', (req, res) => {
     status: 'Pending',
     ...req.body
   };
+
+  try {
+    if (req.db) {
+      await Order.create(newOrder);
+
+      // Deduct stock in MongoDB
+      if (Array.isArray(req.body.items)) {
+        for (const item of req.body.items) {
+          if (item.productId) {
+            await Product.findOneAndUpdate(
+              { id: item.productId, stock: { $gte: item.quantity || 1 } },
+              { $inc: { stock: -(item.quantity || 1) } }
+            );
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('MongoDB post order fallback:', err.message);
+  }
+
+  // Dual-write to local DB
+  const db = getDB();
   if (!db.orders) db.orders = [];
   db.orders.unshift(newOrder);
 
-  // Update product stock levels
   if (Array.isArray(req.body.items)) {
     req.body.items.forEach(item => {
-      const prod = db.products.find(p => p.id === item.productId);
+      const prod = (db.products || []).find(p => p.id === item.productId);
       if (prod && typeof prod.stock === 'number') {
         prod.stock = Math.max(0, prod.stock - (item.quantity || 1));
       }
@@ -230,35 +504,69 @@ app.post('/api/orders', (req, res) => {
   res.status(201).json(newOrder);
 });
 
-app.put('/api/orders/:id/status', (req, res) => {
-  const db = getDB();
-  const order = db.orders.find(o => o.id === req.params.id);
-  if (!order) return res.status(404).json({ error: 'Order not found' });
+app.put('/api/orders/:id/status', async (req, res) => {
+  try {
+    if (req.db) {
+      const updated = await Order.findOneAndUpdate(
+        { id: req.params.id },
+        { $set: { status: req.body.status } },
+        { new: true }
+      ).lean();
+      return res.json(updated);
+    }
+  } catch (err) {
+    console.warn('MongoDB order status fallback:', err.message);
+  }
 
+  const db = getDB();
+  const order = (db.orders || []).find(o => o.id === req.params.id);
+  if (!order) return res.status(404).json({ error: 'Order not found' });
   order.status = req.body.status || order.status;
   saveDB(db);
   res.json(order);
 });
 
-app.delete('/api/orders/:id', (req, res) => {
+app.delete('/api/orders/:id', async (req, res) => {
+  try {
+    if (req.db) {
+      await Order.deleteOne({ id: req.params.id });
+    }
+  } catch (err) {}
+
   const db = getDB();
-  db.orders = db.orders.filter(o => o.id !== req.params.id);
+  db.orders = (db.orders || []).filter(o => o.id !== req.params.id);
   saveDB(db);
   res.json({ success: true });
 });
 
-// 6. Coupons
-app.get('/api/coupons', (req, res) => {
+// 7. Coupons
+app.get('/api/coupons', async (req, res) => {
+  try {
+    if (req.db) {
+      const coupons = await Coupon.find({}).lean();
+      return res.json(coupons || []);
+    }
+  } catch (err) {}
+
   const db = getDB();
   res.json(db.coupons || []);
 });
 
-app.post('/api/coupons/validate', (req, res) => {
+app.post('/api/coupons/validate', async (req, res) => {
   const { code, subtotal } = req.body;
   if (!code) return res.status(400).json({ valid: false, message: 'Please provide a coupon code' });
 
-  const db = getDB();
-  const coupon = (db.coupons || []).find(c => c.code.toUpperCase() === code.trim().toUpperCase() && c.active);
+  let coupon = null;
+  try {
+    if (req.db) {
+      coupon = await Coupon.findOne({ code: code.trim().toUpperCase(), isActive: true }).lean();
+    }
+  } catch (err) {}
+
+  if (!coupon) {
+    const db = getDB();
+    coupon = (db.coupons || []).find(c => c.code.toUpperCase() === code.trim().toUpperCase() && (c.active || c.isActive));
+  }
 
   if (!coupon) {
     return res.status(404).json({ valid: false, message: 'Invalid or expired coupon code' });
@@ -286,33 +594,55 @@ app.post('/api/coupons/validate', (req, res) => {
   });
 });
 
-app.post('/api/coupons', (req, res) => {
-  const db = getDB();
+app.post('/api/coupons', async (req, res) => {
   const newCoupon = {
     code: (req.body.code || '').toUpperCase().trim(),
     discountType: req.body.discountType || 'percentage',
     value: Number(req.body.value) || 10,
     minOrder: Number(req.body.minOrder) || 0,
     description: req.body.description || '',
+    isActive: true,
     active: true
   };
+
+  try {
+    if (req.db) {
+      await Coupon.create(newCoupon);
+    }
+  } catch (err) {}
+
+  const db = getDB();
   if (!db.coupons) db.coupons = [];
   db.coupons.push(newCoupon);
   saveDB(db);
   res.status(201).json(newCoupon);
 });
 
-app.delete('/api/coupons/:code', (req, res) => {
+app.delete('/api/coupons/:code', async (req, res) => {
+  try {
+    if (req.db) {
+      await Coupon.deleteOne({ code: req.params.code });
+    }
+  } catch (err) {}
+
   const db = getDB();
   db.coupons = (db.coupons || []).filter(c => c.code !== req.params.code);
   saveDB(db);
   res.json({ success: true });
 });
 
-// 7. Reviews
-app.get('/api/reviews', (req, res) => {
-  const db = getDB();
+// 8. Reviews
+app.get('/api/reviews', async (req, res) => {
   const { productId } = req.query;
+  try {
+    if (req.db) {
+      const q = productId ? { productId } : {};
+      const revs = await Review.find(q).sort({ createdAt: -1 }).lean();
+      return res.json(revs || []);
+    }
+  } catch (err) {}
+
+  const db = getDB();
   let revs = db.reviews || [];
   if (productId) {
     revs = revs.filter(r => r.productId === productId);
@@ -320,8 +650,7 @@ app.get('/api/reviews', (req, res) => {
   res.json(revs);
 });
 
-app.post('/api/reviews', (req, res) => {
-  const db = getDB();
+app.post('/api/reviews', async (req, res) => {
   const newRev = {
     id: 'rev-' + Date.now(),
     date: new Date().toISOString().split('T')[0],
@@ -329,11 +658,27 @@ app.post('/api/reviews', (req, res) => {
     approved: true,
     ...req.body
   };
+
+  try {
+    if (req.db) {
+      await Review.create(newRev);
+      // recalculate product rating
+      const prod = await Product.findOne({ id: req.body.productId });
+      if (prod) {
+        const prodReviews = await Review.find({ productId: prod.id });
+        const avg = prodReviews.reduce((sum, r) => sum + (r.rating || 5), 0) / prodReviews.length;
+        prod.rating = Number(avg.toFixed(1));
+        prod.reviewsCount = prodReviews.length;
+        await prod.save();
+      }
+    }
+  } catch (err) {}
+
+  const db = getDB();
   if (!db.reviews) db.reviews = [];
   db.reviews.unshift(newRev);
 
-  // recalculate product rating
-  const prod = db.products.find(p => p.id === req.body.productId);
+  const prod = (db.products || []).find(p => p.id === req.body.productId);
   if (prod) {
     const prodReviews = db.reviews.filter(r => r.productId === prod.id);
     const avg = prodReviews.reduce((sum, r) => sum + (r.rating || 5), 0) / prodReviews.length;
@@ -345,21 +690,26 @@ app.post('/api/reviews', (req, res) => {
   res.status(201).json(newRev);
 });
 
-app.delete('/api/reviews/:id', (req, res) => {
+app.delete('/api/reviews/:id', async (req, res) => {
+  try {
+    if (req.db) {
+      await Review.deleteOne({ id: req.params.id });
+    }
+  } catch (err) {}
+
   const db = getDB();
   db.reviews = (db.reviews || []).filter(r => r.id !== req.params.id);
   saveDB(db);
   res.json({ success: true });
 });
 
-// 8. Robust Admin Authentication with Custom Password Support & Brute-Force Guard
+// 9. Admin Authentication
 const failedAttempts = {};
 
 app.post('/api/auth/login', (req, res) => {
   const ip = req.ip || req.connection?.remoteAddress || 'client';
   const now = Date.now();
 
-  // Check brute force lockout (5 failed attempts = 5 min lock)
   if (failedAttempts[ip] && failedAttempts[ip].count >= 5) {
     const remainingTime = Math.ceil((failedAttempts[ip].lockUntil - now) / 1000);
     if (remainingTime > 0) {
@@ -386,18 +736,17 @@ app.post('/api/auth/login', (req, res) => {
     return res.json({
       success: true,
       token: sessionToken,
-      expiresAt: now + (4 * 60 * 60 * 1000), // 4 hours
+      expiresAt: now + (4 * 60 * 60 * 1000),
       role: 'admin'
     });
   }
 
-  // Increment failed attempts
   if (!failedAttempts[ip]) {
     failedAttempts[ip] = { count: 1, lockUntil: 0 };
   } else {
     failedAttempts[ip].count += 1;
     if (failedAttempts[ip].count >= 5) {
-      failedAttempts[ip].lockUntil = now + (5 * 60 * 1000); // 5 minutes
+      failedAttempts[ip].lockUntil = now + (5 * 60 * 1000);
     }
   }
 
@@ -407,7 +756,7 @@ app.post('/api/auth/login', (req, res) => {
   });
 });
 
-app.post('/api/auth/change-password', (req, res) => {
+app.post('/api/auth/change-password', async (req, res) => {
   const { currentPassword, newPassword, newUsername } = req.body;
   const db = getDB();
   const currentConfiguredPass = db.settings?.adminPassword || process.env.ADMIN_PASSWORD || 'admin123';
@@ -420,6 +769,14 @@ app.post('/api/auth/change-password', (req, res) => {
     return res.status(400).json({ success: false, message: 'New password must be at least 6 characters.' });
   }
 
+  try {
+    if (req.db) {
+      const updateObj = { adminPassword: newPassword };
+      if (newUsername && newUsername.trim()) updateObj.adminUsername = newUsername.trim();
+      await Setting.findOneAndUpdate({ key: 'store_settings' }, { $set: updateObj }, { upsert: true });
+    }
+  } catch (err) {}
+
   db.settings = db.settings || {};
   db.settings.adminPassword = newPassword;
   if (newUsername && newUsername.trim()) {
@@ -430,13 +787,13 @@ app.post('/api/auth/change-password', (req, res) => {
   res.json({ success: true, message: 'Admin credentials successfully updated.' });
 });
 
-// Production: serve built static files if dist exists (for local or traditional hosting)
+// Production: serve built static files if dist exists
 const distPath = path.join(rootDir, 'dist');
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));
 }
 
-// Only listen on port if executed directly (not when imported by Vercel serverless functions)
+// Only listen on port if executed directly
 if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
   app.listen(PORT, () => {
     console.log(`\n======================================================`);
