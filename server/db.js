@@ -216,7 +216,11 @@ export async function connectDB() {
     cached.promise = mongoose.connect(uri.trim(), opts)
       .then(async (mongooseInstance) => {
         console.log('✅ Connected to MongoDB Atlas Cloud');
-        await seedFromLocalIfEmpty();
+        // Run seed check non-blockingly in background
+        if (!cached.seeded) {
+          cached.seeded = true;
+          seedFromLocalIfEmpty().catch(() => {});
+        }
         return mongooseInstance;
       })
       .catch((err) => {

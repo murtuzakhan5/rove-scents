@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, CheckCircle2, Truck, ShieldCheck, Tag, ArrowRight, MessageCircle, AlertCircle, Copy, Check } from 'lucide-react';
+import { trackPurchase } from '../utils/facebookPixel';
 
 const PAKISTAN_CITIES = [
   'Lahore', 'Karachi', 'Islamabad', 'Rawalpindi', 'Faisalabad', 'Multan',
@@ -125,6 +126,9 @@ export default function CheckoutModal({
       const createdOrder = await res.json();
       if (res.ok) {
         setCompletedOrder(createdOrder);
+        try {
+          trackPurchase(createdOrder, cartItems, grandTotal);
+        } catch (e) {}
         onOrderSuccess(createdOrder);
       } else {
         setFormError(createdOrder.error || 'Failed to place order. Please try again.');

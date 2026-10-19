@@ -90,15 +90,10 @@ export default function AdminDashboard({
     return categories || [];
   });
 
-  // Keep categoriesList synced when categories prop updates without losing custom additions
+  // Keep categoriesList synced directly with categories prop
   React.useEffect(() => {
-    if (categories && categories.length > 0) {
-      setCategoriesList(prev => {
-        const map = new Map();
-        (categories || []).forEach(c => map.set(c.id, c));
-        (prev || []).forEach(c => map.set(c.id, c));
-        return Array.from(map.values());
-      });
+    if (categories && Array.isArray(categories) && categories.length > 0) {
+      setCategoriesList(categories);
     }
   }, [categories]);
 
@@ -539,21 +534,12 @@ export default function AdminDashboard({
   };
 
   // Open Add Product Modal
-  const openAddModal = () => {
+  const openAddModal = (presetCategory = null) => {
     setEditingProduct(null);
-    let currentCats = [...(categoriesList || [])];
-    try {
-      const local = JSON.parse(localStorage.getItem('rove_custom_categories') || '[]');
-      if (Array.isArray(local) && local.length > 0) {
-        const map = new Map();
-        (categories || []).forEach(c => map.set(c.id, c));
-        currentCats.forEach(c => map.set(c.id, c));
-        local.forEach(c => map.set(c.id, c));
-        currentCats = Array.from(map.values());
-        setCategoriesList(currentCats);
-      }
-    } catch (e) {}
-    const defaultCat = (currentCats.find(c => c.id !== 'all')?.id) || 'men';
+    const availableCats = (categoriesList && categoriesList.length > 0)
+      ? categoriesList
+      : ((categories && categories.length > 0) ? categories : []);
+    const defaultCat = presetCategory || (availableCats.find(c => c.id !== 'all')?.id) || 'men';
     setProductForm({
       name: '',
       category: defaultCat,
@@ -1973,6 +1959,48 @@ export default function AdminDashboard({
                   />
                 </div>
 
+                {/* Meta (Facebook) Pixel Configuration for Ads Tracking */}
+                <div className="p-4 sm:p-5 rounded-xl bg-[#181818] border border-[#2b2b2b] space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-[#1877F2]/20 border border-[#1877F2]/50 flex items-center justify-center text-[#1877F2] font-black text-base shadow">
+                        f
+                      </div>
+                      <div>
+                        <h4 className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                          <span>Meta (Facebook) Pixel Integration</span>
+                          <span className={`px-2 py-0.5 rounded text-[9.5px] font-bold ${
+                            settingsForm.facebookPixelId?.trim() 
+                              ? 'bg-emerald-950 text-emerald-400 border border-emerald-500/30' 
+                              : 'bg-zinc-800 text-zinc-400'
+                          }`}>
+                            {settingsForm.facebookPixelId?.trim() ? '● ACTIVE & TRACKING' : 'INACTIVE'}
+                          </span>
+                        </h4>
+                        <p className="text-[11px] text-zinc-400 mt-0.5">
+                          Automatically tracks Facebook & Instagram Ads conversions: PageView, ViewContent, AddToCart, InitiateCheckout & Purchase (with PKR revenue).
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-300 mb-1">
+                      Meta Pixel ID (15-16 Digits)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 182736452910384"
+                      value={settingsForm.facebookPixelId || ''}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, facebookPixelId: e.target.value.trim() })}
+                      className="w-full bg-[#141414] border border-[#333] rounded px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-gold-500 placeholder-zinc-600"
+                    />
+                    <p className="text-[10.5px] text-zinc-500 mt-1">
+                      Find your Pixel ID in <span className="text-gold-300 font-semibold">Meta Events Manager → Data Sources</span>. Once saved, ads will optimize for website purchases in Pakistan.
+                    </p>
+                  </div>
+                </div>
+
                 <div className="pt-2 flex justify-end">
                   <button
                     type="submit"
@@ -2203,34 +2231,45 @@ export default function AdminDashboard({
                       }
                       setProductForm({ ...productForm, category: e.target.value });
                     }}
-                    className="w-full bg-[#1c1c1c] border border-[#333] rounded px-3 py-2 text-xs text-white focus:outline-none focus:border-gold-500 capitalize"
+                    className="w-full bg-[#1c1c1c] border border-[#333] rounded px-3 py-2 text-xs text-white focus:outline-none focus:border-gold-500"
                   >
                     {(() => {
                       const allCatsMap = new Map();
-                      // Base/prop categories
-                      (categories || []).forEach(c => c?.id && allCatsMap.set(c.id.toLowerCase().trim(), c));
-                      // localStorage categories
+                      (categoriesList || []).forEach(c => {
+                        if (c?.id && c.id !== 'all') allCatsMap.set(c.id.toLowerCase().trim(), c);
+                      });
+                      (categories || []).forEach(c => {
+                        if (c?.id && c.id !== 'all' && !allCatsMap.has(c.id.toLowerCase().trim())) {
+                          allCatsMap.set(c.id.toLowerCase().trim(), c);
+                        }
+                      });
                       try {
                         const local = JSON.parse(localStorage.getItem('rove_custom_categories') || '[]');
-                        if (Array.isArray(local)) local.forEach(c => c?.id && allCatsMap.set(c.id.toLowerCase().trim(), c));
+                        if (Array.isArray(local)) {
+                          local.forEach(c => {
+                            if (c?.id && c.id !== 'all' && !allCatsMap.has(c.id.toLowerCase().trim())) {
+                              allCatsMap.set(c.id.toLowerCase().trim(), c);
+                            }
+                          });
+                        }
                       } catch (e) {}
-                      // State categories
-                      (categoriesList || []).forEach(c => c?.id && allCatsMap.set(c.id.toLowerCase().trim(), c));
 
-                      return Array.from(allCatsMap.values())
-                        .filter(c => c.id !== 'all')
-                        .map(cat => (
-                          <option key={cat.id} value={cat.id} className="bg-[#181818] text-white">
-                            {cat.name} ({cat.id})
+                      const options = Array.from(allCatsMap.values()).map(cat => (
+                        <option key={cat.id} value={cat.id} className="bg-[#181818] text-white">
+                          {cat.name}
+                        </option>
+                      ));
+
+                      if (productForm.category && !allCatsMap.has(productForm.category.toLowerCase().trim())) {
+                        options.unshift(
+                          <option key={productForm.category} value={productForm.category} className="bg-[#181818] text-white">
+                            {productForm.category}
                           </option>
-                        ));
+                        );
+                      }
+
+                      return options;
                     })()}
-                    {/* Fallback if product has a custom or newly added category */}
-                    {productForm.category && (
-                      <option value={productForm.category} className="bg-[#181818] text-white">
-                        {productForm.category}
-                      </option>
-                    )}
                     <option value="__add_new__" className="bg-[#222] text-gold-300 font-bold">
                       + Create New Category...
                     </option>

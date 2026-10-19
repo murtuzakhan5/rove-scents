@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import compression from 'compression';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -23,6 +24,7 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
+app.use(compression());
 app.use(cors());
 app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: true, limit: '15mb' }));
@@ -95,7 +97,73 @@ app.use(async (req, res, next) => {
   next();
 });
 
-// ==================== API ROUTES ====================
+// ==================== FAST CACHE & API ROUTES ====================
+let bootstrapCache = null;
+let bootstrapCacheTime = 0;
+const CACHE_TTL_MS = 20000; // 20s cache for extreme speed
+
+function invalidateBootstrapCache() {
+  bootstrapCache = null;
+  bootstrapCacheTime = 0;
+}
+
+// Unified fast bootstrap endpoint (loads everything in 1 single network request)
+app.get('/api/init', async (req, res) => {
+  const now = Date.now();
+  if (bootstrapCache && (now - bootstrapCacheTime < CACHE_TTL_MS)) {
+    return res.json(bootstrapCache);
+  }
+
+  try {
+    const conn = req.db || await connectDB();
+    if (conn) {
+      const [settingsDoc, categories, products, banners, reviews] = await Promise.all([
+        Setting.findOne({ key: 'store_settings' }).lean(),
+        Category.find({}).lean(),
+        Product.find({}).sort({ createdAt: -1 }).lean(),
+        Banner.find({}).sort({ order: 1 }).lean(),
+        Review.find({}).sort({ createdAt: -1 }).lean()
+      ]);
+
+      const payload = {
+        success: true,
+        settings: settingsDoc || (getDB().settings || {}),
+        categories: (categories && categories.length > 0) ? categories : (getDB().categories || []),
+        products: (products && products.length > 0) ? products : (getDB().products || []),
+        banners: (banners && banners.length > 0) ? banners : (getDB().banners || defaultBanners),
+        reviews: (reviews && reviews.length > 0) ? reviews : (getDB().reviews || []),
+        dbStatus: {
+          connected: true,
+          type: 'mongodb',
+          mongoUriConfigured: true
+        }
+      };
+
+      bootstrapCache = payload;
+      bootstrapCacheTime = now;
+      return res.json(payload);
+    }
+  } catch (err) {
+    console.warn('Bootstrap Mongo fetch error:', err.message);
+  }
+
+  // Fallback to local DB
+  const db = getDB();
+  const fallbackPayload = {
+    success: true,
+    settings: db.settings || {},
+    categories: db.categories || [],
+    products: db.products || [],
+    banners: db.banners || defaultBanners,
+    reviews: db.reviews || [],
+    dbStatus: {
+      connected: false,
+      type: 'local_json',
+      mongoUriConfigured: !!(process.env.MONGODB_URI && process.env.MONGODB_URI.trim())
+    }
+  };
+  res.json(fallbackPayload);
+});
 
 // 0. Database Status
 app.get('/api/database-status', async (req, res) => {
@@ -126,13 +194,18 @@ app.get('/api/settings', async (req, res) => {
 });
 
 app.put('/api/settings', async (req, res) => {
+  invalidateBootstrapCache();
   try {
-    if (req.db) {
+    const conn = req.db || await connectDB();
+    if (conn) {
       const updated = await Setting.findOneAndUpdate(
         { key: 'store_settings' },
         { $set: req.body },
-        { upsert: true, new: true }
+        { upsert: true, returnDocument: 'after' }
       ).lean();
+      const db = getDB();
+      db.settings = { ...db.settings, ...req.body };
+      saveDB(db);
       return res.json({ success: true, settings: updated });
     }
   } catch (err) {
@@ -147,7 +220,8 @@ app.put('/api/settings', async (req, res) => {
 // 2. Categories
 app.get('/api/categories', async (req, res) => {
   try {
-    if (req.db) {
+    const conn = req.db || await connectDB();
+    if (conn) {
       const cats = await Category.find({}).lean();
       if (cats && cats.length > 0) {
         return res.json(cats);
@@ -161,12 +235,17 @@ app.get('/api/categories', async (req, res) => {
 });
 
 app.put('/api/categories', async (req, res) => {
+  invalidateBootstrapCache();
   try {
-    if (req.db && Array.isArray(req.body)) {
+    const conn = req.db || await connectDB();
+    if (conn && Array.isArray(req.body)) {
       await Category.deleteMany({});
       if (req.body.length > 0) {
         await Category.insertMany(req.body);
       }
+      const db = getDB();
+      db.categories = req.body;
+      saveDB(db);
       return res.json({ success: true, categories: req.body });
     }
   } catch (err) {
@@ -260,6 +339,7 @@ app.get('/api/products/:id', async (req, res) => {
 });
 
 app.post('/api/products', async (req, res) => {
+  invalidateBootstrapCache();
   const newProduct = {
     id: req.body.id || ('prod-' + Date.now()),
     slug: (req.body.name || 'perfume').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
@@ -269,8 +349,9 @@ app.post('/api/products', async (req, res) => {
   };
 
   try {
-    if (req.db) {
-      await Product.findOneAndUpdate({ id: newProduct.id }, newProduct, { upsert: true, new: true });
+    const conn = req.db || await connectDB();
+    if (conn) {
+      await Product.findOneAndUpdate({ id: newProduct.id }, newProduct, { upsert: true, returnDocument: 'after' });
     }
   } catch (err) {
     console.warn('MongoDB post product fallback:', err.message);
@@ -286,12 +367,14 @@ app.post('/api/products', async (req, res) => {
 });
 
 app.put('/api/products/:id', async (req, res) => {
+  invalidateBootstrapCache();
   try {
-    if (req.db) {
+    const conn = req.db || await connectDB();
+    if (conn) {
       const updated = await Product.findOneAndUpdate(
         { id: req.params.id },
         { $set: req.body },
-        { new: true, upsert: true }
+        { upsert: true, returnDocument: 'after' }
       ).lean();
       // Dual-write to local DB
       const db = getDB();
@@ -307,7 +390,6 @@ app.put('/api/products/:id', async (req, res) => {
   const db = getDB();
   const idx = (db.products || []).findIndex(p => p.id === req.params.id);
   if (idx === -1) {
-    // Create if missing
     const newP = { id: req.params.id, ...req.body };
     db.products.unshift(newP);
     saveDB(db);
@@ -320,8 +402,10 @@ app.put('/api/products/:id', async (req, res) => {
 });
 
 app.delete('/api/products/:id', async (req, res) => {
+  invalidateBootstrapCache();
   try {
-    if (req.db) {
+    const conn = req.db || await connectDB();
+    if (conn) {
       await Product.deleteOne({ id: req.params.id });
     }
   } catch (err) {
@@ -337,7 +421,8 @@ app.delete('/api/products/:id', async (req, res) => {
 // ==================== 4. BANNERS (HERO SLIDER) ====================
 app.get('/api/banners', async (req, res) => {
   try {
-    if (req.db) {
+    const conn = req.db || await connectDB();
+    if (conn) {
       const banners = await Banner.find({}).sort({ order: 1 }).lean();
       if (banners && banners.length > 0) {
         return res.json(banners);
@@ -352,6 +437,7 @@ app.get('/api/banners', async (req, res) => {
 });
 
 app.post('/api/banners', async (req, res) => {
+  invalidateBootstrapCache();
   const newBanner = {
     id: req.body.id || ('banner-' + Date.now()),
     order: req.body.order || 99,
@@ -360,9 +446,19 @@ app.post('/api/banners', async (req, res) => {
   };
 
   try {
-    if (req.db) {
-      const saved = await Banner.create(newBanner);
-      return res.status(201).json(saved);
+    const conn = req.db || await connectDB();
+    if (conn) {
+      const saved = await Banner.findOneAndUpdate(
+        { id: newBanner.id },
+        { $set: newBanner },
+        { upsert: true, returnDocument: 'after' }
+      ).lean();
+      // Dual-write
+      const db = getDB();
+      if (!db.banners) db.banners = [...defaultBanners];
+      db.banners.push(newBanner);
+      saveDB(db);
+      return res.status(201).json(saved || newBanner);
     }
   } catch (err) {
     console.warn('MongoDB post banner fallback:', err.message);
@@ -377,14 +473,26 @@ app.post('/api/banners', async (req, res) => {
 });
 
 app.put('/api/banners/:id', async (req, res) => {
+  invalidateBootstrapCache();
   try {
-    if (req.db) {
+    const conn = req.db || await connectDB();
+    if (conn) {
       const updated = await Banner.findOneAndUpdate(
         { id: req.params.id },
         { $set: req.body },
-        { new: true, upsert: true }
+        { upsert: true, returnDocument: 'after' }
       ).lean();
-      return res.json(updated);
+      // Dual-write
+      const db = getDB();
+      if (!db.banners) db.banners = [...defaultBanners];
+      const idx = db.banners.findIndex(b => b.id === req.params.id);
+      if (idx > -1) {
+        db.banners[idx] = { ...db.banners[idx], ...req.body };
+      } else {
+        db.banners.push({ id: req.params.id, ...req.body });
+      }
+      saveDB(db);
+      return res.json(updated || { id: req.params.id, ...req.body });
     }
   } catch (err) {
     console.warn('MongoDB put banner fallback:', err.message);
@@ -403,8 +511,10 @@ app.put('/api/banners/:id', async (req, res) => {
 });
 
 app.delete('/api/banners/:id', async (req, res) => {
+  invalidateBootstrapCache();
   try {
-    if (req.db) {
+    const conn = req.db || await connectDB();
+    if (conn) {
       await Banner.deleteOne({ id: req.params.id });
     }
   } catch (err) {
@@ -651,6 +761,7 @@ app.get('/api/reviews', async (req, res) => {
 });
 
 app.post('/api/reviews', async (req, res) => {
+  invalidateBootstrapCache();
   const newRev = {
     id: 'rev-' + Date.now(),
     date: new Date().toISOString().split('T')[0],
@@ -660,7 +771,8 @@ app.post('/api/reviews', async (req, res) => {
   };
 
   try {
-    if (req.db) {
+    const conn = req.db || await connectDB();
+    if (conn) {
       await Review.create(newRev);
       // recalculate product rating
       const prod = await Product.findOne({ id: req.body.productId });
@@ -691,8 +803,10 @@ app.post('/api/reviews', async (req, res) => {
 });
 
 app.delete('/api/reviews/:id', async (req, res) => {
+  invalidateBootstrapCache();
   try {
-    if (req.db) {
+    const conn = req.db || await connectDB();
+    if (conn) {
       await Review.deleteOne({ id: req.params.id });
     }
   } catch (err) {}

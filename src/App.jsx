@@ -14,6 +14,13 @@ import InvoiceModal from './components/InvoiceModal';
 import WhatsAppButton from './components/WhatsAppButton';
 import SocialProofToasts from './components/SocialProofToasts';
 import { Sparkles, ArrowUpDown, ArrowRight, ShieldCheck, Lock, SlidersHorizontal } from 'lucide-react';
+import { 
+  initFacebookPixel, 
+  trackPageView, 
+  trackViewContent, 
+  trackAddToCart, 
+  trackInitiateCheckout 
+} from './utils/facebookPixel';
 
 export default function App() {
   const [settings, setSettings] = useState(null);
@@ -77,66 +84,70 @@ export default function App() {
     localStorage.setItem('rove_cart', JSON.stringify(cartItems));
   }, [cartItems]);
 
-  // Fetch all data from Express API with MongoDB & localStorage persistence bridge
+  // Fetch all store data with ultra-fast /api/init bootstrap (Single request ~200ms)
   const fetchData = async () => {
     try {
-      const [resSet, resCat, resProd, resOrd, resCoup, resRev, resBan, resDb] = await Promise.all([
+      // 1. Try unified fast bootstrap endpoint first
+      let initData = null;
+      try {
+        const res = await fetch('/api/init');
+        if (res.ok) {
+          const json = await res.json();
+          if (json && json.success) {
+            initData = json;
+          }
+        }
+      } catch (e) {}
+
+      if (initData) {
+        if (initData.settings && Object.keys(initData.settings).length > 0) {
+          setSettings(initData.settings);
+          // Initialize Facebook Pixel if configured
+          if (initData.settings.facebookPixelId) {
+            initFacebookPixel(initData.settings.facebookPixelId);
+            trackPageView();
+          }
+        }
+        if (Array.isArray(initData.categories) && initData.categories.length > 0) {
+          setCategories(initData.categories);
+        }
+        if (Array.isArray(initData.products) && initData.products.length > 0) {
+          setProducts(initData.products);
+        }
+        if (Array.isArray(initData.banners) && initData.banners.length > 0) {
+          setBanners(initData.banners);
+        }
+        if (Array.isArray(initData.reviews)) {
+          setReviews(initData.reviews);
+        }
+        if (initData.dbStatus) {
+          setDbStatus(initData.dbStatus);
+        }
+        return;
+      }
+
+      // 2. Fallback to individual requests if /api/init is not yet available
+      const [resSet, resCat, resProd, resRev, resBan, resDb] = await Promise.all([
         fetch('/api/settings').then(r => r.json()).catch(() => ({})),
         fetch('/api/categories').then(r => r.json()).catch(() => []),
         fetch('/api/products').then(r => r.json()).catch(() => []),
-        fetch('/api/orders').then(r => r.json()).catch(() => []),
-        fetch('/api/coupons').then(r => r.json()).catch(() => []),
         fetch('/api/reviews').then(r => r.json()).catch(() => []),
         fetch('/api/banners').then(r => r.json()).catch(() => []),
         fetch('/api/database-status').then(r => r.json()).catch(() => ({ connected: false, type: 'local_json' }))
       ]);
 
-      // Vercel serverless persistence bridge: merge local custom items
-      let mergedProducts = Array.isArray(resProd) && resProd.length > 0 ? [...resProd] : [];
-      try {
-        const localCustomProds = JSON.parse(localStorage.getItem('rove_custom_products') || '[]');
-        if (localCustomProds.length > 0) {
-          localCustomProds.forEach(lp => {
-            const idx = mergedProducts.findIndex(p => p.id === lp.id);
-            if (idx > -1) {
-              mergedProducts[idx] = { ...mergedProducts[idx], ...lp };
-            } else {
-              mergedProducts.unshift(lp);
-            }
-          });
+      if (resSet && Object.keys(resSet).length > 0) {
+        setSettings(resSet);
+        if (resSet.facebookPixelId) {
+          initFacebookPixel(resSet.facebookPixelId);
+          trackPageView();
         }
-      } catch (e) {}
-
-      let mergedCats = Array.isArray(resCat) && resCat.length > 0 ? [...resCat] : [];
-      try {
-        const localCustomCats = JSON.parse(localStorage.getItem('rove_custom_categories') || '[]');
-        if (localCustomCats.length > 0) {
-          const catMap = new Map();
-          mergedCats.forEach(c => c?.id && catMap.set(c.id.toLowerCase().trim(), c));
-          localCustomCats.forEach(c => c?.id && catMap.set(c.id.toLowerCase().trim(), c));
-          mergedCats = Array.from(catMap.values());
-        }
-      } catch (e) {}
-
-      let mergedBanners = Array.isArray(resBan) && resBan.length > 0 ? [...resBan] : [];
-      try {
-        const localCustomBanners = JSON.parse(localStorage.getItem('rove_custom_banners') || '[]');
-        if (localCustomBanners.length > 0) {
-          const banMap = new Map();
-          mergedBanners.forEach(b => b?.id && banMap.set(b.id, b));
-          localCustomBanners.forEach(b => b?.id && banMap.set(b.id, b));
-          mergedBanners = Array.from(banMap.values());
-        }
-      } catch (e) {}
-
-      if (resSet && Object.keys(resSet).length > 0) setSettings(resSet);
-      if (mergedCats.length > 0) setCategories(mergedCats);
-      if (mergedProducts.length > 0) setProducts(mergedProducts);
-      if (mergedBanners.length > 0) setBanners(mergedBanners);
-      if (resDb) setDbStatus(resDb);
-      if (Array.isArray(resOrd)) setOrders(resOrd);
-      if (Array.isArray(resCoup)) setCoupons(resCoup);
+      }
+      if (Array.isArray(resCat) && resCat.length > 0) setCategories(resCat);
+      if (Array.isArray(resProd) && resProd.length > 0) setProducts(resProd);
+      if (Array.isArray(resBan) && resBan.length > 0) setBanners(resBan);
       if (Array.isArray(resRev)) setReviews(resRev);
+      if (resDb) setDbStatus(resDb);
     } catch (err) {
       console.error('Failed to load store data:', err);
     }
@@ -179,30 +190,22 @@ export default function App() {
 
   // Instant storefront update when admin adds/edits/deletes categories
   const handleCategoriesUpdated = (updatedCats) => {
-    setCategories(prev => {
-      const map = new Map();
-      (prev || []).forEach(c => c?.id && map.set(c.id.toLowerCase().trim(), c));
-      (updatedCats || []).forEach(c => c?.id && map.set(c.id.toLowerCase().trim(), c));
-      const res = Array.from(map.values());
+    if (Array.isArray(updatedCats)) {
+      setCategories(updatedCats);
       try {
-        localStorage.setItem('rove_custom_categories', JSON.stringify(res));
+        localStorage.setItem('rove_custom_categories', JSON.stringify(updatedCats));
       } catch (e) {}
-      return res;
-    });
+    }
   };
 
   // Instant storefront update when admin adds/edits/deletes hero banners
   const handleBannersUpdated = (updatedBanners) => {
-    setBanners(prev => {
-      const map = new Map();
-      (prev || []).forEach(b => b?.id && map.set(b.id, b));
-      (updatedBanners || []).forEach(b => b?.id && map.set(b.id, b));
-      const res = Array.from(map.values());
+    if (Array.isArray(updatedBanners)) {
+      setBanners(updatedBanners);
       try {
-        localStorage.setItem('rove_custom_banners', JSON.stringify(res));
+        localStorage.setItem('rove_custom_banners', JSON.stringify(updatedBanners));
       } catch (e) {}
-      return res;
-    });
+    }
   };
 
   useEffect(() => {
@@ -239,6 +242,9 @@ export default function App() {
     if (!prod) return;
     setActiveProduct(prod);
     setCurrentView('product');
+    try {
+      trackViewContent(prod);
+    } catch (e) {}
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -246,6 +252,9 @@ export default function App() {
   const handleBackToStore = () => {
     setCurrentView('home');
     setActiveProduct(null);
+    try {
+      trackPageView();
+    } catch (e) {}
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -269,6 +278,9 @@ export default function App() {
       }
     });
 
+    try {
+      trackAddToCart(productToAdd);
+    } catch (e) {}
     setIsCartOpen(true);
   };
 
@@ -277,6 +289,9 @@ export default function App() {
     handleAddToCart(productToBuy);
     setIsCartOpen(false);
     setIsCheckoutOpen(true);
+    try {
+      trackInitiateCheckout([productToBuy], productToBuy.price);
+    } catch (e) {}
   };
 
   const handleUpdateQuantity = (id, size, newQty) => {
@@ -662,7 +677,13 @@ export default function App() {
           cartItems={cartItems}
           onUpdateQuantity={handleUpdateQuantity}
           onRemoveItem={handleRemoveItem}
-          onCheckoutClick={() => setIsCheckoutOpen(true)}
+          onCheckoutClick={() => {
+            setIsCheckoutOpen(true);
+            try {
+              const total = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+              trackInitiateCheckout(cartItems, total);
+            } catch (e) {}
+          }}
         />
       )}
 

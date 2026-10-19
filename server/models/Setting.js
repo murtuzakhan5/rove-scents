@@ -16,7 +16,8 @@ const SettingSchema = new mongoose.Schema({
   heroImageUrl: { type: String, default: '/images/rove-rukh-banner.jpg' },
   deliveryCharge: { type: Number, default: 200 },
   freeDeliveryThreshold: { type: Number, default: 2500 },
-  bankDetails: { type: String, default: '' }
+  bankDetails: { type: String, default: '' },
+  facebookPixelId: { type: String, default: '' }
 }, { timestamps: true, strict: false });
 
 export default mongoose.models.Setting || mongoose.model('Setting', SettingSchema);

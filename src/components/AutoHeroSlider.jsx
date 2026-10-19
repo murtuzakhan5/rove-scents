@@ -203,11 +203,15 @@ export default function AutoHeroSlider({ onSelectProduct, onDirectCheckout, onSh
             {/* Price */}
             <div className="flex items-baseline gap-1.5 pt-0.5">
               <span className="text-xs sm:text-base font-black gold-gradient-text font-serif">
-                {slide.isCollection ? 'From Rs. 2,490' : `Rs. ${slide.price.toLocaleString()}`}
+                {slide.isCollection 
+                  ? `From Rs. ${Number(slide.price || 2490).toLocaleString()}` 
+                  : `Rs. ${Number(slide.price || 2650).toLocaleString()}`}
               </span>
-              <span className="text-[8.5px] sm:text-[10px] text-zinc-400 line-through">
-                Rs. {slide.comparePrice.toLocaleString()}
-              </span>
+              {slide.comparePrice ? (
+                <span className="text-[8.5px] sm:text-[10px] text-zinc-400 line-through">
+                  Rs. {Number(slide.comparePrice).toLocaleString()}
+                </span>
+              ) : null}
             </div>
 
             {/* Compact CTA */}
@@ -220,7 +224,7 @@ export default function AutoHeroSlider({ onSelectProduct, onDirectCheckout, onSh
                 }}
                 className="pointer-events-auto inline-flex items-center gap-1 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-md bg-gradient-to-r from-gold-400 via-gold-500 to-amber-600 text-black font-black text-[8px] sm:text-[9.5px] uppercase tracking-wider shadow-[0_0_12px_rgba(212,175,55,0.4)] active:scale-95 transition"
               >
-                <span>{slide.isCollection ? 'SHOP ALL' : 'BUY NOW'}</span>
+                <span>{slide.btnText || (slide.isCollection ? 'SHOP ALL' : 'BUY NOW')}</span>
                 <ArrowRight size={9} />
               </button>
             </div>
@@ -236,7 +240,7 @@ export default function AutoHeroSlider({ onSelectProduct, onDirectCheckout, onSh
             <div className="flex items-center gap-3">
               <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-black/90 backdrop-blur-md border border-gold-500/50 text-gold-300 text-[11px] font-bold tracking-[0.15em] uppercase shadow-[0_0_15px_rgba(212,175,55,0.25)]">
                 <Sparkles size={11} className="text-gold-400 shrink-0" />
-                <span>{slide.tag}</span>
+                <span>{slide.tag || slide.badge || 'HAUTE PARFUMERIE'}</span>
               </span>
 
               {slide.arabic && (
@@ -253,43 +257,61 @@ export default function AutoHeroSlider({ onSelectProduct, onDirectCheckout, onSh
                   {slide.title}
                 </span>
               </h1>
-              <p className="text-xs sm:text-sm font-bold text-zinc-300 tracking-[0.2em] uppercase drop-shadow">
-                {slide.genre}
-              </p>
+              {slide.genre && (
+                <p className="text-xs sm:text-sm font-bold text-zinc-300 tracking-[0.2em] uppercase drop-shadow">
+                  {slide.genre}
+                </p>
+              )}
             </div>
 
             {/* Subtitle / Story */}
-            <p className="text-zinc-200 text-xs sm:text-sm max-w-xl font-light leading-relaxed drop-shadow">
-              {slide.subtitle}
-            </p>
+            {slide.subtitle && (
+              <p className="text-zinc-200 text-xs sm:text-sm max-w-xl font-light leading-relaxed drop-shadow">
+                {slide.subtitle}
+              </p>
+            )}
 
             {/* Olfactory Notes Capsules */}
-            <div className="grid grid-cols-3 gap-2.5 pt-1 max-w-xl">
-              <div className="p-2 lg:p-2.5 rounded-lg bg-black/90 backdrop-blur-md border border-gold-500/40 shadow-sm">
-                <span className="text-[10px] uppercase font-bold text-gold-400 block tracking-wider">🌿 TOP</span>
-                <span className="text-xs text-white font-medium leading-tight block">{slide.topNote}</span>
+            {(slide.topNote || slide.heartNote || slide.baseNote) && (
+              <div className="grid grid-cols-3 gap-2.5 pt-1 max-w-xl">
+                {slide.topNote && (
+                  <div className="p-2 lg:p-2.5 rounded-lg bg-black/90 backdrop-blur-md border border-gold-500/40 shadow-sm">
+                    <span className="text-[10px] uppercase font-bold text-gold-400 block tracking-wider">🌿 TOP</span>
+                    <span className="text-xs text-white font-medium leading-tight block truncate">{slide.topNote}</span>
+                  </div>
+                )}
+                {slide.heartNote && (
+                  <div className="p-2 lg:p-2.5 rounded-lg bg-black/90 backdrop-blur-md border border-gold-500/40 shadow-sm">
+                    <span className="text-[10px] uppercase font-bold text-gold-400 block tracking-wider">🌸 HEART</span>
+                    <span className="text-xs text-white font-medium leading-tight block truncate">{slide.heartNote}</span>
+                  </div>
+                )}
+                {slide.baseNote && (
+                  <div className="p-2 lg:p-2.5 rounded-lg bg-black/90 backdrop-blur-md border border-gold-500/40 shadow-sm">
+                    <span className="text-[10px] uppercase font-bold text-gold-400 block tracking-wider">🪵 BASE</span>
+                    <span className="text-xs text-white font-medium leading-tight block truncate">{slide.baseNote}</span>
+                  </div>
+                )}
               </div>
-              <div className="p-2 lg:p-2.5 rounded-lg bg-black/90 backdrop-blur-md border border-gold-500/40 shadow-sm">
-                <span className="text-[10px] uppercase font-bold text-gold-400 block tracking-wider">🌸 HEART</span>
-                <span className="text-xs text-white font-medium leading-tight block">{slide.heartNote}</span>
-              </div>
-              <div className="p-2 lg:p-2.5 rounded-lg bg-black/90 backdrop-blur-md border border-gold-500/40 shadow-sm">
-                <span className="text-[10px] uppercase font-bold text-gold-400 block tracking-wider">🪵 BASE</span>
-                <span className="text-xs text-white font-medium leading-tight block">{slide.baseNote}</span>
-              </div>
-            </div>
+            )}
 
             {/* Price Row & Guarantee */}
             <div className="flex items-baseline gap-3 pt-1">
               <span className="text-2xl lg:text-4xl font-extrabold gold-gradient-text font-serif drop-shadow-md">
-                {slide.isCollection ? 'From Rs. 2,490' : `Rs. ${slide.price.toLocaleString()}`}
+                {slide.isCollection 
+                  ? `From Rs. ${Number(slide.price || 2490).toLocaleString()}` 
+                  : `Rs. ${Number(slide.price || 2650).toLocaleString()}`}
               </span>
-              <span className="text-base lg:text-lg text-zinc-400 line-through">
-                Rs. {slide.comparePrice.toLocaleString()}
-              </span>
-              <span className="px-2 py-0.5 rounded bg-red-600/90 text-white text-[10px] font-extrabold uppercase tracking-wider shadow">
-                SAVE {Math.round(((slide.comparePrice - slide.price) / slide.comparePrice) * 100)}%
-              </span>
+              {slide.comparePrice ? (
+                <span className="text-base lg:text-lg text-zinc-400 line-through">
+                  Rs. {Number(slide.comparePrice).toLocaleString()}
+                </span>
+              ) : null}
+              {slide.comparePrice && slide.price && Number(slide.comparePrice) > Number(slide.price) && (
+                <span className="px-2 py-0.5 rounded bg-red-600/90 text-white text-[10px] font-extrabold uppercase tracking-wider shadow">
+                  SAVE {Math.round(((Number(slide.comparePrice) - Number(slide.price)) / Number(slide.comparePrice)) * 100)}%
+                </span>
+              )}
               <span className="text-xs text-emerald-400 font-semibold">
                 • Free Nationwide Delivery Included
               </span>
@@ -305,7 +327,7 @@ export default function AutoHeroSlider({ onSelectProduct, onDirectCheckout, onSh
                 }}
                 className="px-8 py-3.5 lg:py-4 rounded-xl bg-gradient-to-r from-gold-400 via-gold-500 to-amber-600 hover:brightness-110 text-black font-black text-xs lg:text-sm uppercase tracking-widest transition flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(212,175,55,0.4)] active:scale-95"
               >
-                <span>{slide.btnText}</span>
+                <span>{slide.btnText || 'BUY NOW (COD)'}</span>
                 <ArrowRight size={14} className="shrink-0" />
               </button>
             </div>
