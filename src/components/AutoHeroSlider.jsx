@@ -83,7 +83,7 @@ export default function AutoHeroSlider({ onSelectProduct, onDirectCheckout, onSh
       title: 'ROVE SCENTS',
       arabic: 'مجموعہ',
       genre: 'NAZ • AFSANA • RAAZ • RUKH',
-      subtitle: 'From golden sunsets to mysterious midnight whispers. Discover the complete luxury collection crafted with 35% pure French fragrance oils for 16+ hours of prestige.',
+      subtitle: 'From golden sunsets to mysterious midnight whispers. Discover the complete luxury collection crafted with 35% pure French fragrance oils for 8+ hours of prestige.',
       price: 2490,
       comparePrice: 3800,
       bannerImage: '/images/rove-all-collection-banner.jpg',
@@ -91,7 +91,7 @@ export default function AutoHeroSlider({ onSelectProduct, onDirectCheckout, onSh
       rating: '5.0',
       reviews: '500+ Verified Buyers',
       topNote: '4 Iconic Signatures',
-      heartNote: '16+ Hours Lasting Sillage',
+      heartNote: '8+ Hours Lasting Sillage',
       baseNote: 'Free Nationwide COD Delivery',
       btnText: 'SHOP ALL PRODUCTS',
       accentGlow: 'rgba(212, 175, 55, 0.4)'
@@ -394,7 +394,7 @@ export default function AutoHeroSlider({ onSelectProduct, onDirectCheckout, onSh
               <Clock size={19} />
             </div>
             <div className="text-left">
-              <h5 className="text-xs font-bold text-white uppercase tracking-wider">16+ Hours Lasting</h5>
+              <h5 className="text-xs font-bold text-white uppercase tracking-wider">8+ Hours Lasting</h5>
               <p className="text-[11px] text-zinc-400">Pure 35% Extrait concentration</p>
             </div>
           </div>

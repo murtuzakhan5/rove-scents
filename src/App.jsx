@@ -21,22 +21,34 @@ import {
   trackAddToCart, 
   trackInitiateCheckout 
 } from './utils/facebookPixel';
+import { 
+  initialCategories, 
+  initialProducts, 
+  initialBanners, 
+  initialSettings 
+} from './data/initialStoreData';
 
 export default function App() {
-  const [settings, setSettings] = useState(null);
+  const [settings, setSettings] = useState(() => {
+    try {
+      const local = JSON.parse(localStorage.getItem('rove_custom_settings') || 'null');
+      if (local && Object.keys(local).length > 0) return local;
+    } catch (e) {}
+    return initialSettings;
+  });
   const [categories, setCategories] = useState(() => {
     try {
       const local = JSON.parse(localStorage.getItem('rove_custom_categories') || '[]');
       if (Array.isArray(local) && local.length > 0) return local;
     } catch (e) {}
-    return [];
+    return initialCategories;
   });
   const [products, setProducts] = useState(() => {
     try {
       const local = JSON.parse(localStorage.getItem('rove_custom_products') || '[]');
       if (Array.isArray(local) && local.length > 0) return local;
     } catch (e) {}
-    return [];
+    return initialProducts;
   });
   const [orders, setOrders] = useState([]);
   const [coupons, setCoupons] = useState([]);
@@ -44,10 +56,10 @@ export default function App() {
   const [banners, setBanners] = useState(() => {
     try {
       const local = localStorage.getItem('rove_custom_banners');
-      return local ? JSON.parse(local) : [];
-    } catch {
-      return [];
-    }
+      const parsed = local ? JSON.parse(local) : null;
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    } catch {}
+    return initialBanners;
   });
   const [dbStatus, setDbStatus] = useState({ connected: false, type: 'local_json' });
 
@@ -102,6 +114,7 @@ export default function App() {
       if (initData) {
         if (initData.settings && Object.keys(initData.settings).length > 0) {
           setSettings(initData.settings);
+          try { localStorage.setItem('rove_custom_settings', JSON.stringify(initData.settings)); } catch (e) {}
           // Initialize Facebook Pixel if configured
           if (initData.settings.facebookPixelId) {
             initFacebookPixel(initData.settings.facebookPixelId);
@@ -110,12 +123,15 @@ export default function App() {
         }
         if (Array.isArray(initData.categories) && initData.categories.length > 0) {
           setCategories(initData.categories);
+          try { localStorage.setItem('rove_custom_categories', JSON.stringify(initData.categories)); } catch (e) {}
         }
         if (Array.isArray(initData.products) && initData.products.length > 0) {
           setProducts(initData.products);
+          try { localStorage.setItem('rove_custom_products', JSON.stringify(initData.products)); } catch (e) {}
         }
         if (Array.isArray(initData.banners) && initData.banners.length > 0) {
           setBanners(initData.banners);
+          try { localStorage.setItem('rove_custom_banners', JSON.stringify(initData.banners)); } catch (e) {}
         }
         if (Array.isArray(initData.reviews)) {
           setReviews(initData.reviews);
@@ -138,14 +154,24 @@ export default function App() {
 
       if (resSet && Object.keys(resSet).length > 0) {
         setSettings(resSet);
+        try { localStorage.setItem('rove_custom_settings', JSON.stringify(resSet)); } catch (e) {}
         if (resSet.facebookPixelId) {
           initFacebookPixel(resSet.facebookPixelId);
           trackPageView();
         }
       }
-      if (Array.isArray(resCat) && resCat.length > 0) setCategories(resCat);
-      if (Array.isArray(resProd) && resProd.length > 0) setProducts(resProd);
-      if (Array.isArray(resBan) && resBan.length > 0) setBanners(resBan);
+      if (Array.isArray(resCat) && resCat.length > 0) {
+        setCategories(resCat);
+        try { localStorage.setItem('rove_custom_categories', JSON.stringify(resCat)); } catch (e) {}
+      }
+      if (Array.isArray(resProd) && resProd.length > 0) {
+        setProducts(resProd);
+        try { localStorage.setItem('rove_custom_products', JSON.stringify(resProd)); } catch (e) {}
+      }
+      if (Array.isArray(resBan) && resBan.length > 0) {
+        setBanners(resBan);
+        try { localStorage.setItem('rove_custom_banners', JSON.stringify(resBan)); } catch (e) {}
+      }
       if (Array.isArray(resRev)) setReviews(resRev);
       if (resDb) setDbStatus(resDb);
     } catch (err) {
@@ -533,7 +559,7 @@ export default function App() {
                     Buy Any 2 Perfumes & Get <span className="gold-gradient-text">FREE Shipping + Tester Gift</span>
                   </h3>
                   <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed font-light">
-                    Mix and match your favorite designer impressions. Enjoy 16+ hours of opulent French projection and receive a complimentary 10ml travel atomizer with every order of 2 or more bottles.
+                    Mix and match your favorite designer impressions. Enjoy 8+ hours of opulent French projection and receive a complimentary 10ml travel atomizer with every order of 2 or more bottles.
                   </p>
                   <div className="pt-2">
                     <button

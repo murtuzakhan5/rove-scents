@@ -17,7 +17,7 @@ export default function Navbar({
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const marqueeText = settings?.announcementText || 
-    "✨ FREE NATIONWIDE SHIPPING ON ORDERS OVER RS. 2,500  •  🚚 CASH ON DELIVERY AVAILABLE ACROSS PAKISTAN  •  💎 100% FRENCH EXTRAIT OILS (35% CONCENTRATION)  •  ⏳ 16+ HOURS LONGEVITY GUARANTEE  •  🔄 7-DAY HASSLE-FREE EXCHANGE";
+    "✨ FREE NATIONWIDE SHIPPING ON ORDERS OVER RS. 2,500  •  🚚 CASH ON DELIVERY AVAILABLE ACROSS PAKISTAN  •  💎 100% FRENCH EXTRAIT OILS (35% CONCENTRATION)  •  ⏳ 8+ HOURS LONGEVITY GUARANTEE  •  🔄 7-DAY HASSLE-FREE EXCHANGE";
 
   return (
     <header className="sticky top-0 z-40 bg-[#070707]/95 backdrop-blur-md border-b border-[#222]">

@@ -73,7 +73,7 @@ export default function AboutUsModal({ isOpen, onClose, settings }) {
               <div className="w-10 h-10 rounded-xl bg-gold-500/10 border border-gold-500/30 flex items-center justify-center text-gold-400">
                 <ShieldCheck size={20} />
               </div>
-              <h4 className="font-bold text-white font-serif text-sm">16+ Hours Longevity</h4>
+              <h4 className="font-bold text-white font-serif text-sm">8+ Hours Longevity</h4>
               <p className="text-[11px] text-zinc-400">
                 Tested against Pakistan's warm climate. Zero stinging alcohol sharpness, just seamless evolution from top to base.
               </p>

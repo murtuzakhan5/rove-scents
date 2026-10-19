@@ -102,7 +102,7 @@ const defaultBanners = [
     title: 'ROVE SCENTS',
     arabic: 'مجموعہ',
     genre: 'NAZ • AFSANA • RAAZ • RUKH',
-    subtitle: 'From golden sunsets to mysterious midnight whispers. Discover the complete luxury collection crafted with 35% pure French fragrance oils for 16+ hours of prestige.',
+    subtitle: 'From golden sunsets to mysterious midnight whispers. Discover the complete luxury collection crafted with 35% pure French fragrance oils for 8+ hours of prestige.',
     price: 2490,
     comparePrice: 3800,
     bannerImage: '/images/rove-all-collection-banner.jpg',
@@ -110,7 +110,7 @@ const defaultBanners = [
     rating: '5.0',
     reviews: '500+ Verified Buyers',
     topNote: '4 Iconic Signatures',
-    heartNote: '16+ Hours Lasting Sillage',
+    heartNote: '8+ Hours Lasting Sillage',
     baseNote: 'Free Nationwide COD Delivery',
     btnText: 'SHOP ALL PRODUCTS',
     btnLink: '',
@@ -123,7 +123,7 @@ const defaultBanners = [
 let cached = global.mongoose;
 
 if (!cached) {
-  cached = global.mongoose = { conn: null, promise: null };
+  cached = global.mongoose = { conn: null, promise: null, lastFailedAt: 0 };
 }
 
 // Auto-seed MongoDB from db.json if collections are empty
@@ -185,6 +185,13 @@ export async function seedFromLocalIfEmpty() {
   }
 }
 
+export function resetConnectionCooldown() {
+  if (cached) {
+    cached.lastFailedAt = 0;
+    cached.promise = null;
+  }
+}
+
 export async function connectDB() {
   const uri = process.env.MONGODB_URI;
   if (!uri || !uri.trim()) {
@@ -196,6 +203,11 @@ export async function connectDB() {
     return mongoose;
   }
 
+  // Circuit breaker: If connection failed in last 30 seconds, fail immediately to keep responses instant (<2ms)
+  if (cached.lastFailedAt && (Date.now() - cached.lastFailedAt < 30000)) {
+    return null;
+  }
+
   // ReadyState 2 = connecting
   if (mongoose.connection.readyState === 2 && cached.promise) {
     try {
@@ -203,6 +215,7 @@ export async function connectDB() {
       return mongoose;
     } catch (e) {
       cached.promise = null;
+      return null;
     }
   }
 
@@ -210,12 +223,13 @@ export async function connectDB() {
     const opts = {
       bufferCommands: false,
       maxPoolSize: 10,
-      serverSelectionTimeoutMS: 8000
+      serverSelectionTimeoutMS: 2000
     };
 
     cached.promise = mongoose.connect(uri.trim(), opts)
       .then(async (mongooseInstance) => {
         console.log('✅ Connected to MongoDB Atlas Cloud');
+        cached.lastFailedAt = 0;
         // Run seed check non-blockingly in background
         if (!cached.seeded) {
           cached.seeded = true;
@@ -225,7 +239,8 @@ export async function connectDB() {
       })
       .catch((err) => {
         cached.promise = null;
-        console.error('❌ MongoDB Connection Error:', err.message);
+        cached.lastFailedAt = Date.now();
+        console.error('❌ MongoDB Connection Error (cooldown active):', err.message);
         return null;
       });
   }
@@ -235,6 +250,7 @@ export async function connectDB() {
     return conn;
   } catch (e) {
     cached.promise = null;
+    cached.lastFailedAt = Date.now();
     return null;
   }
 }

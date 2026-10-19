@@ -73,7 +73,7 @@ export default function AdminDashboard({
     topNotes: '',
     heartNotes: '',
     baseNotes: '',
-    longevity: '14+ Hours',
+    longevity: '8+ Hours',
     sillage: 'Strong',
     season: 'All Season'
   });
@@ -166,7 +166,7 @@ export default function AdminDashboard({
       title: 'ROVE SCENTS',
       arabic: 'مجموعہ',
       genre: 'NAZ • AFSANA • RAAZ • RUKH',
-      subtitle: 'From golden sunsets to mysterious midnight whispers. Discover the complete luxury collection crafted with 35% pure French fragrance oils for 16+ hours of prestige.',
+      subtitle: 'From golden sunsets to mysterious midnight whispers. Discover the complete luxury collection crafted with 35% pure French fragrance oils for 8+ hours of prestige.',
       price: 2490,
       comparePrice: 3800,
       bannerImage: '/images/rove-all-collection-banner.jpg',
@@ -536,10 +536,13 @@ export default function AdminDashboard({
   // Open Add Product Modal
   const openAddModal = (presetCategory = null) => {
     setEditingProduct(null);
+    const validPreset = (typeof presetCategory === 'string' && presetCategory.trim() && presetCategory.trim() !== '[object Object]')
+      ? presetCategory.trim()
+      : null;
     const availableCats = (categoriesList && categoriesList.length > 0)
       ? categoriesList
       : ((categories && categories.length > 0) ? categories : []);
-    const defaultCat = presetCategory || (availableCats.find(c => c.id !== 'all')?.id) || 'men';
+    const defaultCat = validPreset || (availableCats.find(c => c.id !== 'all')?.id) || 'men';
     setProductForm({
       name: '',
       category: defaultCat,
@@ -558,7 +561,7 @@ export default function AdminDashboard({
       topNotes: '',
       heartNotes: '',
       baseNotes: '',
-      longevity: '14+ Hours',
+      longevity: '8+ Hours',
       sillage: 'Heavy & Magnetic',
       season: 'All Season'
     });
@@ -1081,7 +1084,7 @@ export default function AdminDashboard({
                   </div>
 
                   <button
-                    onClick={openAddModal}
+                    onClick={() => openAddModal()}
                     className="px-4 py-2 rounded-lg bg-gradient-to-r from-gold-500 to-amber-600 hover:from-gold-400 hover:to-amber-500 text-black font-bold text-xs uppercase tracking-wider transition flex items-center gap-1.5 shadow"
                   >
                     <Plus size={15} />
@@ -1131,7 +1134,7 @@ export default function AdminDashboard({
                               {prod.stock} Units
                             </span>
                           </td>
-                          <td className="py-3 px-4 text-zinc-400">{prod.longevity || '14+ Hours'}</td>
+                          <td className="py-3 px-4 text-zinc-400">{prod.longevity || '8+ Hours'}</td>
                           <td className="py-3 px-4">
                             {prod.badge && (
                               <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-gold-500/20 text-gold-300 border border-gold-500/30">
@@ -2260,10 +2263,11 @@ export default function AdminDashboard({
                         </option>
                       ));
 
-                      if (productForm.category && !allCatsMap.has(productForm.category.toLowerCase().trim())) {
+                      const currentCatStr = typeof productForm.category === 'string' ? productForm.category.trim() : '';
+                      if (currentCatStr && !allCatsMap.has(currentCatStr.toLowerCase())) {
                         options.unshift(
-                          <option key={productForm.category} value={productForm.category} className="bg-[#181818] text-white">
-                            {productForm.category}
+                          <option key={currentCatStr} value={currentCatStr} className="bg-[#181818] text-white">
+                            {currentCatStr}
                           </option>
                         );
                       }
@@ -2406,7 +2410,7 @@ export default function AdminDashboard({
                     type="text"
                     value={productForm.longevity}
                     onChange={(e) => setProductForm({ ...productForm, longevity: e.target.value })}
-                    placeholder="e.g. 14+ Hours"
+                    placeholder="e.g. 8+ Hours"
                     className="w-full bg-[#1c1c1c] border border-[#333] rounded px-3 py-2 text-xs text-white focus:outline-none"
                   />
                 </div>

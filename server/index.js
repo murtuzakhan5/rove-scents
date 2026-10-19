@@ -7,7 +7,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import multer from 'multer';
 
-import { connectDB, defaultBanners } from './db.js';
+import { connectDB, defaultBanners, resetConnectionCooldown } from './db.js';
 import Product from './models/Product.js';
 import Category from './models/Category.js';
 import Banner from './models/Banner.js';
@@ -168,6 +168,18 @@ app.get('/api/init', async (req, res) => {
 // 0. Database Status
 app.get('/api/database-status', async (req, res) => {
   const isMongo = !!req.db;
+  res.json({
+    connected: isMongo,
+    type: isMongo ? 'mongodb' : 'local_json',
+    mongoUriConfigured: !!(process.env.MONGODB_URI && process.env.MONGODB_URI.trim())
+  });
+});
+
+app.post('/api/database-reconnect', async (req, res) => {
+  resetConnectionCooldown();
+  invalidateBootstrapCache();
+  const conn = await connectDB();
+  const isMongo = !!conn;
   res.json({
     connected: isMongo,
     type: isMongo ? 'mongodb' : 'local_json',

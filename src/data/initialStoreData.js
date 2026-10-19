@@ -1,0 +1,268 @@
+// Bundled initial store data for instant 0ms perceptual rendering
+export const initialCategories = [
+  {
+    id: 'all',
+    name: 'All Perfumes',
+    image: '/images/cat-all.jpg'
+  },
+  {
+    id: 'men',
+    name: "Men's Luxury",
+    image: '/images/cat-men.jpg'
+  },
+  {
+    id: 'women',
+    name: "Women's Signatures",
+    image: '/images/cat-women.jpg'
+  },
+  {
+    id: 'unisex',
+    name: 'Unisex Extrait',
+    image: '/images/cat-unisex.jpg'
+  },
+  {
+    id: 'attars',
+    name: 'Pure Royal Attars',
+    image: '/images/cat-all.jpg'
+  },
+  {
+    id: 'nikkah-favours',
+    name: 'Nikkah Favours',
+    image: '/images/cat-all.jpg'
+  }
+];
+
+export const initialProducts = [
+  {
+    id: 'prod-rukh',
+    name: 'ROVE RUKH (رخ)',
+    category: 'men',
+    gender: 'Men',
+    inspiredBy: 'Imperial Woody Amber & French Bergamot',
+    price: 2650,
+    comparePrice: 3950,
+    rating: 5.0,
+    reviewsCount: 164,
+    stock: 45,
+    featured: true,
+    badge: 'BEST SELLER',
+    bottleSize: '50ml Extrait De Parfum',
+    image: '/images/bottle-rukh.jpg',
+    galleryImages: [
+      '/images/bottle-rukh.jpg',
+      '/images/rove-rukh-banner.jpg'
+    ],
+    shortDesc: 'A powerful imperial statement for the commanding gentleman. Sharp Italian bergamot, royal cardamom, smoked golden amber, and Tuscan iris.',
+    description: 'ROVE RUKH (رخ) is our flagship creation. Encased in heavyweight crystalline glass with polished 24K gold accents, RUKH opens with zesty Italian bergamot and spicy cardamom, blooming into opulent Tuscan iris and white jasmine, before settling onto a majestic base of smoked golden amber, vetiver, and royal sandalwood. Over 8 hours of magnetic longevity.',
+    topNotes: 'Calabrian Bergamot, Black Pepper, Guatemalan Cardamom',
+    heartNotes: 'Tuscan Iris Concrete, Egyptian Jasmine, Pink Peppercorn',
+    baseNotes: 'Smoked Golden Amber, Royal Mysore Sandalwood, Haitian Vetiver',
+    longevity: '8+ Hours',
+    sillage: 'Heavy & Magnetic',
+    season: 'All Season / Evening Signature'
+  },
+  {
+    id: 'prod-raaz',
+    name: 'ROVE RAAZ (راز)',
+    category: 'unisex',
+    gender: 'Unisex',
+    inspiredBy: 'Smoky Black Vanilla & Velvet Cashmere',
+    price: 2650,
+    comparePrice: 3950,
+    rating: 5.0,
+    reviewsCount: 142,
+    stock: 38,
+    featured: true,
+    badge: 'MYSTERIOUS NOIR',
+    bottleSize: '50ml Extrait De Parfum',
+    image: '/images/bottle-raaz.jpg',
+    galleryImages: [
+      '/images/bottle-raaz.jpg',
+      '/images/rove-raaz-banner.jpg'
+    ],
+    shortDesc: 'An intoxicating enigma of dark velvet flowers, liquid honey nectar, and deep smoky bourbon vanilla.',
+    description: 'ROVE RAAZ (راز) captures the thrilling beauty of secrets untold. An intoxicating unisex creation weaving golden wildflower honey with rare night-blooming jasmine, before wrapping your skin in warm cashmere, rich tonka bean, and seductive dark vanilla.',
+    topNotes: 'Golden Honey Nectar, Bitter Almond, Mandarin Peel',
+    heartNotes: 'Night-blooming Jasmine, Heliotrope, Rich Tonka Bean',
+    baseNotes: 'Bourbon Black Vanilla, Smoked Cashmere Woods, Golden Benzoin',
+    longevity: '8+ Hours',
+    sillage: 'Intimate & Hypnotic',
+    season: 'Fall / Winter / Night Out'
+  },
+  {
+    id: 'prod-afsana',
+    name: 'ROVE AFSANA (افسانہ)',
+    category: 'women',
+    gender: 'Women',
+    inspiredBy: 'Golden Peaches, Ruby Berries & Damask Rose',
+    price: 2650,
+    comparePrice: 3950,
+    rating: 5.0,
+    reviewsCount: 129,
+    stock: 52,
+    featured: true,
+    badge: 'MOST LOVED',
+    bottleSize: '50ml Extrait De Parfum',
+    image: '/images/bottle-afsana.jpg',
+    galleryImages: [
+      '/images/bottle-afsana.jpg',
+      '/images/rove-afsana-banner.jpg'
+    ],
+    shortDesc: 'A tale of unforgettable romance. Sun-ripened golden peaches, wild berries, and fresh pink roses bathed in golden hour light.',
+    description: 'ROVE AFSANA (افسانہ) tells a poetic love story in scent. Bursting with succulent sun-kissed peaches and sweet ruby berries at the golden hour, dancing with exquisite Damask rose petals, and drying down to warm amber spun sugar and white musk. Soft, irresistible, and endlessly captivating.',
+    topNotes: 'Sun-ripened Peach Nectar, Wild Forest Berries, Bergamot',
+    heartNotes: 'Damask Pink Rose, Magnolia Blossoms, Sweet Osmanthus',
+    baseNotes: 'Spun Sugar, French White Musk, Golden Sunset Amber',
+    longevity: '8+ Hours',
+    sillage: 'Radiant & Addictive',
+    season: 'Spring / Summer / Daytime Romance'
+  },
+  {
+    id: 'prod-naz',
+    name: 'ROVE NAZ (ناز)',
+    category: 'women',
+    gender: 'Women',
+    inspiredBy: 'Royal White Gardenia, Magnolia & Cashmere Woods',
+    price: 2450,
+    comparePrice: 3600,
+    rating: 5.0,
+    reviewsCount: 97,
+    stock: 40,
+    featured: true,
+    badge: 'NEW ARRIVAL',
+    bottleSize: '50ml Extrait De Parfum',
+    image: '/images/bottle-rukh.jpg',
+    galleryImages: [
+      '/images/bottle-rukh.jpg'
+    ],
+    shortDesc: 'Ethereal purity and feminine pride. Sparkling magnolia, crisp white flowers, and soft velvet silk musk.',
+    description: 'ROVE NAZ (ناز) is an ode to pure grace. Delicate crisp citrus opening leads into an ethereal bouquet of royal white gardenia, soft jasmine petals, and cashmere woods that embrace you like pure cashmere.',
+    topNotes: 'Italian Bergamot, White Blossom, Pear',
+    heartNotes: 'Solar Magnolia, Damask Petals, Jasmine',
+    baseNotes: 'Velvet Musk, Amberwood, Soft Cedar',
+    longevity: '8+ Hours',
+    sillage: 'Graceful & Ethereal',
+    season: 'Spring / Summer / All Day'
+  }
+];
+
+export const initialBanners = [
+  {
+    id: 'slide-rukh',
+    productId: 'prod-rukh',
+    isCollection: false,
+    tag: 'HAUTE PARFUMERIE • 2026 FLAGSHIP RELEASE',
+    badge: 'TOP SELLER',
+    title: 'ROVE RUKH',
+    arabic: 'رُخ',
+    genre: 'EAU DE PARFUM FOR MEN • 50 ML',
+    subtitle: 'The pinnacle of masculine refinement. Captured amid imperial dark stone and golden water reflections, blending Italian Bergamot, Tuscan Iris, and Smoked Golden Amber.',
+    price: 2650,
+    comparePrice: 3950,
+    bannerImage: '/images/rove-rukh-banner.jpg',
+    bottleImage: '/images/bottle-rukh.jpg',
+    rating: '5.0',
+    reviews: '164 Verified Buyers',
+    topNote: 'Bergamot & Cardamom',
+    heartNote: 'Tuscan Iris & Jasmine',
+    baseNote: 'Smoked Amber & Sandalwood',
+    btnText: 'BUY NOW (COD) — RS. 2,650',
+    btnLink: '',
+    accentGlow: 'rgba(212, 175, 55, 0.35)',
+    order: 1,
+    isActive: true
+  },
+  {
+    id: 'slide-raaz',
+    productId: 'prod-raaz',
+    isCollection: false,
+    tag: 'DARK GOLD LUXURY • WOMAN SIGNATURE',
+    badge: 'LIMITED EDITION',
+    title: 'ROVE RAAZ',
+    arabic: 'راز',
+    genre: 'EAU DE PARFUM FOR WOMEN • 50 ML',
+    subtitle: 'An enigmatic elixir of dark marble elegance. Radiant white blossoms and golden honeyed nectar dissolving into creamy cashmere and smoky black vanilla.',
+    price: 2650,
+    comparePrice: 3950,
+    bannerImage: '/images/rove-raaz-banner.jpg',
+    bottleImage: '/images/bottle-raaz.jpg',
+    rating: '5.0',
+    reviews: '142 Verified Buyers',
+    topNote: 'Honey & Bergamot',
+    heartNote: 'Velvet Jasmine & Cashmere',
+    baseNote: 'Smoked Black Vanilla',
+    btnText: 'BUY NOW (COD) — RS. 2,650',
+    btnLink: '',
+    accentGlow: 'rgba(212, 175, 55, 0.35)',
+    order: 2,
+    isActive: true
+  },
+  {
+    id: 'slide-afsana',
+    productId: 'prod-afsana',
+    isCollection: false,
+    tag: 'FEMININE GRACE • ROMANTIC FLORA',
+    badge: 'MOST LOVED',
+    title: 'ROVE AFSANA',
+    arabic: 'افسانہ',
+    genre: 'EAU DE PARFUM FOR WOMEN • 50 ML',
+    subtitle: 'A tale of irresistible beauty. Sun-ripened golden peaches, wild forest berries, and Damask pink roses suspended in golden sunset amber.',
+    price: 2650,
+    comparePrice: 3950,
+    bannerImage: '/images/rove-afsana-banner.jpg',
+    bottleImage: '/images/bottle-afsana.jpg',
+    rating: '5.0',
+    reviews: '129 Verified Buyers',
+    topNote: 'Peach & Wild Berries',
+    heartNote: 'Damask Rose & Magnolia',
+    baseNote: 'Spun Sugar & White Musk',
+    btnText: 'BUY NOW (COD) — RS. 2,650',
+    btnLink: '',
+    accentGlow: 'rgba(244, 114, 182, 0.35)',
+    order: 3,
+    isActive: true
+  },
+  {
+    id: 'slide-all-collection',
+    productId: null,
+    isCollection: true,
+    tag: 'THE SIGNATURE ANTHOLOGY • 4 MASTERPIECES',
+    badge: 'A FRAGRANCE FOR EVERY STORY',
+    title: 'ROVE SCENTS',
+    arabic: 'مجموعہ',
+    genre: 'NAZ • AFSANA • RAAZ • RUKH',
+    subtitle: 'From golden sunsets to mysterious midnight whispers. Discover the complete luxury collection crafted with 35% pure French fragrance oils for 8+ hours of prestige.',
+    price: 2490,
+    comparePrice: 3800,
+    bannerImage: '/images/rove-all-collection-banner.jpg',
+    bottleImage: '/images/bottle-rukh.jpg',
+    rating: '5.0',
+    reviews: '500+ Verified Buyers',
+    topNote: '4 Iconic Signatures',
+    heartNote: '8+ Hours Lasting Sillage',
+    baseNote: 'Free Nationwide COD Delivery',
+    btnText: 'SHOP ALL PRODUCTS',
+    btnLink: '',
+    accentGlow: 'rgba(212, 175, 55, 0.4)',
+    order: 4,
+    isActive: true
+  }
+];
+
+export const initialSettings = {
+  storeName: 'ROVE SCENTS',
+  storeSlogan: 'SCENT YOUR STORY',
+  whatsappNumber: '923001234567',
+  whatsappDisplay: '+92 300 1234567',
+  contactEmail: 'support@rovescents.pk',
+  announcementText: '✨ FREE NATIONWIDE SHIPPING ON ORDERS OVER RS. 2,500  •  🚚 CASH ON DELIVERY AVAILABLE ACROSS PAKISTAN  •  💎 100% FRENCH EXTRAIT OILS (35% CONCENTRATION)  •  ⏳ 8+ HOURS LONGEVITY GUARANTEE  •  🔄 7-DAY HASSLE-FREE EXCHANGE',
+  heroBadge: 'HAUTE PARFUMERIE COLLECTION',
+  heroTitle: 'SCENT YOUR UNFORGETTABLE STORY',
+  heroSubtitle: 'Masterpiece French-grade impressions crafted with 35% pure oil concentration. Exquisite sillage that lingers 8+ hours on skin and fabrics.',
+  heroBtnText: 'SHOP BEST SELLERS',
+  heroSecondaryBtnText: 'EXPLORE RUKH (رخ)',
+  heroImageUrl: '/images/rove-rukh-banner.jpg',
+  deliveryCharge: 200,
+  freeDeliveryThreshold: 2500,
+  bankDetails: 'Bank: Meezan Bank Ltd\nAccount Title: ROVE SCENTS\nAccount Number: 0102-0103487591\nIBAN: PK65MEZN0001020103487591\nNayapay/Sadapay: 03001234567'
+};

@@ -245,7 +245,7 @@ export default function ProductPage({
             <div className="grid grid-cols-3 gap-3 pt-2">
               <div className="p-3.5 rounded-xl bg-[#131313] border border-[#222] text-center">
                 <Clock size={18} className="text-gold-400 mx-auto mb-1" />
-                <span className="text-xs font-bold text-white block">16+ Hours</span>
+                <span className="text-xs font-bold text-white block">{product.longevity || '8+ Hours'}</span>
                 <span className="text-[10px] text-zinc-400">Guaranteed Lasting</span>
               </div>
               <div className="p-3.5 rounded-xl bg-[#131313] border border-[#222] text-center">
@@ -448,7 +448,7 @@ export default function ProductPage({
 
                     <div className="p-3.5 rounded-xl bg-[#141414] border border-[#242424]">
                       <span className="text-gold-400 font-bold uppercase tracking-wider block text-[10px] mb-1">
-                        🪵 BASE NOTES (Drydown 8 to 16+ hours)
+                        🪵 BASE NOTES (Drydown 8+ hours)
                       </span>
                       <p className="text-zinc-200 text-sm font-serif">{product.baseNotes || "Smoked Golden Amber, Royal Sandalwood, Vetiver"}</p>
                     </div>
