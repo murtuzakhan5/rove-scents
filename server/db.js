@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import mongoose from 'mongoose';
 import fs from 'fs';
 import path from 'path';
@@ -190,31 +191,44 @@ export async function connectDB() {
     return null;
   }
 
-  if (cached.conn) {
-    return cached.conn;
+  // ReadyState 1 = connected
+  if (mongoose.connection.readyState === 1) {
+    return mongoose;
+  }
+
+  // ReadyState 2 = connecting
+  if (mongoose.connection.readyState === 2 && cached.promise) {
+    try {
+      await cached.promise;
+      return mongoose;
+    } catch (e) {
+      cached.promise = null;
+    }
   }
 
   if (!cached.promise) {
     const opts = {
       bufferCommands: false,
       maxPoolSize: 10,
-      serverSelectionTimeoutMS: 5000
+      serverSelectionTimeoutMS: 8000
     };
 
-    cached.promise = mongoose.connect(uri.trim(), opts).then(async (mongooseInstance) => {
-      console.log('✅ Successfully connected to MongoDB Cloud');
-      await seedFromLocalIfEmpty();
-      return mongooseInstance;
-    }).catch(err => {
-      cached.promise = null;
-      console.error('❌ MongoDB Connection Error:', err.message);
-      return null;
-    });
+    cached.promise = mongoose.connect(uri.trim(), opts)
+      .then(async (mongooseInstance) => {
+        console.log('✅ Connected to MongoDB Atlas Cloud');
+        await seedFromLocalIfEmpty();
+        return mongooseInstance;
+      })
+      .catch((err) => {
+        cached.promise = null;
+        console.error('❌ MongoDB Connection Error:', err.message);
+        return null;
+      });
   }
 
   try {
-    cached.conn = await cached.promise;
-    return cached.conn;
+    const conn = await cached.promise;
+    return conn;
   } catch (e) {
     cached.promise = null;
     return null;
