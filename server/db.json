@@ -56,11 +56,11 @@
       "category": "men",
       "gender": "Men",
       "inspiredBy": "Signature Haute Creation • Amber, White Florals & Iris",
-      "price": 2650,
+      "price": 2450,
       "comparePrice": 3950,
-      "stock": 44,
+      "stock": 45,
       "featured": true,
-      "badge": "BEST SELLER 2026",
+      "badge": "FLAGSHIP EAU DE PARFUM",
       "bottleSize": "50ml Eau De Parfum",
       "rating": 5,
       "reviewsCount": 164,
@@ -77,7 +77,11 @@
       "baseNotes": "Smoked Amber, Royal Sandalwood, Cashmere Wood, Vetiver",
       "longevity": "16+ Hours",
       "sillage": "Commanding & Magnetic",
-      "season": "All Season Signature"
+      "season": "All Season Signature",
+      "_id": "6ad5f11d3c568c047ab8afe0",
+      "__v": 0,
+      "createdAt": "2026-10-19T10:29:49.326Z",
+      "updatedAt": "2026-10-19T10:36:36.393Z"
     },
     {
       "id": "prod-raaz",
@@ -106,7 +110,11 @@
       "baseNotes": "Dark Madagascar Vanilla, Rich Amber, Golden Sandalwood",
       "longevity": "15+ Hours",
       "sillage": "Enchanting Sillage",
-      "season": "Evening / Winter / Glamour"
+      "season": "Evening / Winter / Glamour",
+      "_id": "6ad5f11d3c568c047ab8afe1",
+      "__v": 0,
+      "createdAt": "2026-10-19T10:29:49.327Z",
+      "updatedAt": "2026-10-19T10:29:49.327Z"
     },
     {
       "id": "prod-afsana",
@@ -135,7 +143,11 @@
       "baseNotes": "Spun Amber Sugar, White Musk, Soft Cedarwood",
       "longevity": "14+ Hours",
       "sillage": "Sweet & Radiantly Alluring",
-      "season": "Spring / Summer / Dates"
+      "season": "Spring / Summer / Dates",
+      "_id": "6ad5f11d3c568c047ab8afe2",
+      "__v": 0,
+      "createdAt": "2026-10-19T10:29:49.327Z",
+      "updatedAt": "2026-10-19T10:29:49.327Z"
     },
     {
       "id": "prod-naz",
@@ -165,7 +177,11 @@
       "baseNotes": "Velvet Musk, Amberwood, Soft Cedar",
       "longevity": "14+ Hours",
       "sillage": "Graceful & Ethereal",
-      "season": "Spring / Summer / All Day"
+      "season": "Spring / Summer / All Day",
+      "_id": "6ad5f11d3c568c047ab8afe3",
+      "__v": 0,
+      "createdAt": "2026-10-19T10:29:49.327Z",
+      "updatedAt": "2026-10-19T10:29:49.327Z"
     }
   ],
   "coupons": [
