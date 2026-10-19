@@ -52,7 +52,8 @@ export default function ProductPage({
   // Scroll to top when product changes
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    setSelectedSize('50ml');
+    const firstKey = (product?.hasVariants && product.variants?.[0]?.name) || '50ml';
+    setSelectedSize(firstKey);
     setQuantity(1);
     setActiveImage(product?.image || '/images/bottle-rukh.jpg');
   }, [product?.id, product?.image]);
@@ -69,16 +70,28 @@ export default function ProductPage({
     url
   }));
 
-  // Size Options
-  const sizes = [
-    { label: '50ml Extrait Bottle', key: '50ml', priceMultiplier: 1.0, sub: 'Signature Heavy Glass' },
-    { label: '100ml Grand Bottle', key: '100ml', priceMultiplier: 1.7, sub: 'Best Value (Save 20%)' },
-    { label: '10ml Travel Pocket Spray', key: '10ml', priceMultiplier: 0.35, sub: 'Pocket Atomizer' }
+  // Default sizes if product has no custom variants
+  const defaultSizes = [
+    { label: '50ml Extrait Bottle', key: '50ml', price: product.price, comparePrice: product.comparePrice, sub: 'Signature Heavy Glass' },
+    { label: '100ml Grand Bottle', key: '100ml', price: Math.round(product.price * 1.7), comparePrice: product.comparePrice ? Math.round(product.comparePrice * 1.7) : null, sub: 'Best Value (Save 20%)' },
+    { label: '10ml Travel Pocket Spray', key: '10ml', price: Math.round(product.price * 0.35), comparePrice: null, sub: 'Pocket Atomizer' }
   ];
 
-  const currentSizeObj = sizes.find(s => s.key === selectedSize) || sizes[0];
-  const unitPrice = Math.round(product.price * currentSizeObj.priceMultiplier);
-  const compareUnitPrice = product.comparePrice ? Math.round(product.comparePrice * currentSizeObj.priceMultiplier) : null;
+  // Dynamic variants support (WordPress WooCommerce style)
+  const availableVariants = (product.hasVariants && Array.isArray(product.variants) && product.variants.length > 0)
+    ? product.variants.map(v => ({
+        label: v.bottleSize || `${v.name} Extrait Bottle`,
+        key: v.name || v.id,
+        price: v.price || product.price,
+        comparePrice: v.comparePrice || product.comparePrice,
+        sub: v.bottleSize || `${v.name} Luxury Flacon`
+      }))
+    : defaultSizes;
+
+  const currentVariant = availableVariants.find(s => s.key === selectedSize) || availableVariants[0];
+  const currentSizeObj = currentVariant;
+  const unitPrice = currentVariant?.price || product.price;
+  const compareUnitPrice = currentVariant?.comparePrice || product.comparePrice;
   const savings = compareUnitPrice ? compareUnitPrice - unitPrice : 0;
 
   // Filter reviews for this specific product
@@ -96,7 +109,8 @@ export default function ProductPage({
   const handleAdd = () => {
     onAddToCart({
       ...product,
-      selectedSize: currentSizeObj.label,
+      selectedSize: currentVariant.label,
+      variantName: currentVariant.key,
       price: unitPrice,
       quantity
     });
@@ -107,7 +121,8 @@ export default function ProductPage({
   const handleBuyNow = () => {
     onDirectCheckout({
       ...product,
-      selectedSize: currentSizeObj.label,
+      selectedSize: currentVariant.label,
+      variantName: currentVariant.key,
       price: unitPrice,
       quantity
     });
@@ -330,9 +345,8 @@ export default function ProductPage({
                 Select Bottle Volume:
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {sizes.map((s) => {
-                  const isSelected = selectedSize === s.key;
-                  const priceForSize = Math.round(product.price * s.priceMultiplier);
+                {availableVariants.map((s) => {
+                  const isSelected = selectedSize === s.key || currentVariant.key === s.key;
                   return (
                     <button
                       key={s.key}
@@ -345,7 +359,7 @@ export default function ProductPage({
                     >
                       <div className="text-xs font-bold text-white">{s.label}</div>
                       <div className="text-[11px] font-bold text-gold-300 mt-0.5">
-                        Rs. {priceForSize.toLocaleString()}
+                        Rs. {s.price.toLocaleString()}
                       </div>
                       <div className="text-[10px] text-zinc-400 mt-0.5">{s.sub}</div>
                     </button>

@@ -35,8 +35,16 @@ export const initialCategories = [
 export const initialProducts = [
   {
     id: 'prod-rukh',
+    slug: 'rove-rukh',
     name: 'ROVE RUKH (رخ)',
     category: 'men',
+    categories: ['men'],
+    hasVariants: true,
+    variants: [
+      { id: 'var-1', name: '50ml', bottleSize: '50ml Extrait De Parfum', price: 2650, comparePrice: 3950, stock: 45 },
+      { id: 'var-2', name: '100ml', bottleSize: '100ml Extrait De Parfum', price: 4450, comparePrice: 6200, stock: 20 },
+      { id: 'var-3', name: '10ml', bottleSize: '10ml Pocket Travel Atomizer', price: 950, comparePrice: 1400, stock: 50 }
+    ],
     gender: 'Men',
     inspiredBy: 'Imperial Woody Amber & French Bergamot',
     price: 2650,
@@ -63,8 +71,15 @@ export const initialProducts = [
   },
   {
     id: 'prod-raaz',
+    slug: 'rove-raaz',
     name: 'ROVE RAAZ (راز)',
     category: 'unisex',
+    categories: ['unisex', 'men'],
+    hasVariants: true,
+    variants: [
+      { id: 'var-1', name: '50ml', bottleSize: '50ml Extrait De Parfum', price: 2650, comparePrice: 3950, stock: 38 },
+      { id: 'var-2', name: '100ml', bottleSize: '100ml Extrait De Parfum', price: 4450, comparePrice: 6200, stock: 15 }
+    ],
     gender: 'Unisex',
     inspiredBy: 'Smoky Black Vanilla & Velvet Cashmere',
     price: 2650,
@@ -91,8 +106,15 @@ export const initialProducts = [
   },
   {
     id: 'prod-afsana',
+    slug: 'rove-afsana',
     name: 'ROVE AFSANA (افسانہ)',
     category: 'women',
+    categories: ['women'],
+    hasVariants: true,
+    variants: [
+      { id: 'var-1', name: '50ml', bottleSize: '50ml Extrait De Parfum', price: 2650, comparePrice: 3950, stock: 52 },
+      { id: 'var-2', name: '100ml', bottleSize: '100ml Extrait De Parfum', price: 4450, comparePrice: 6200, stock: 25 }
+    ],
     gender: 'Women',
     inspiredBy: 'Golden Peaches, Ruby Berries & Damask Rose',
     price: 2650,
@@ -119,8 +141,12 @@ export const initialProducts = [
   },
   {
     id: 'prod-naz',
+    slug: 'rove-naz',
     name: 'ROVE NAZ (ناز)',
     category: 'women',
+    categories: ['women'],
+    hasVariants: false,
+    variants: [],
     gender: 'Women',
     inspiredBy: 'Royal White Gardenia, Magnolia & Cashmere Woods',
     price: 2450,
@@ -255,6 +281,7 @@ export const initialSettings = {
   whatsappNumber: '923001234567',
   whatsappDisplay: '+92 300 1234567',
   contactEmail: 'support@rovescents.pk',
+  adminNotificationEmail: 'rovescentsofficial@gmail.com',
   announcementText: '✨ FREE NATIONWIDE SHIPPING ON ORDERS OVER RS. 2,500  •  🚚 CASH ON DELIVERY AVAILABLE ACROSS PAKISTAN  •  💎 100% FRENCH EXTRAIT OILS (35% CONCENTRATION)  •  ⏳ 8+ HOURS LONGEVITY GUARANTEE  •  🔄 7-DAY HASSLE-FREE EXCHANGE',
   heroBadge: 'HAUTE PARFUMERIE COLLECTION',
   heroTitle: 'SCENT YOUR UNFORGETTABLE STORY',

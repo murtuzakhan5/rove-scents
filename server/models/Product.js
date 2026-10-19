@@ -5,6 +5,9 @@ const ProductSchema = new mongoose.Schema({
   name: { type: String, required: true },
   slug: { type: String },
   category: { type: String, default: 'men' },
+  categories: { type: [String], default: [] },
+  hasVariants: { type: Boolean, default: false },
+  variants: { type: Array, default: [] },
   gender: { type: String, default: 'Men' },
   inspiredBy: { type: String, default: '' },
   price: { type: Number, required: true },
@@ -12,7 +15,7 @@ const ProductSchema = new mongoose.Schema({
   stock: { type: Number, default: 50 },
   featured: { type: Boolean, default: false },
   badge: { type: String, default: '' },
-  bottleSize: { type: String, default: '50ml Eau De Parfum' },
+  bottleSize: { type: String, default: '50ml Extrait De Parfum' },
   rating: { type: Number, default: 5 },
   reviewsCount: { type: Number, default: 1 },
   image: { type: String, default: '/images/cat-all.jpg' },
@@ -22,7 +25,7 @@ const ProductSchema = new mongoose.Schema({
   topNotes: { type: String, default: '' },
   heartNotes: { type: String, default: '' },
   baseNotes: { type: String, default: '' },
-  longevity: { type: String, default: '14+ Hours' },
+  longevity: { type: String, default: '8+ Hours' },
   sillage: { type: String, default: 'Strong' },
   season: { type: String, default: 'All Season' }
 }, { timestamps: true, strict: false });

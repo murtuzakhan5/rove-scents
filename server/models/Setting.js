@@ -10,14 +10,19 @@ const SettingSchema = new mongoose.Schema({
   announcementText: { type: String, default: '✨ FREE NATIONWIDE SHIPPING ON ORDERS OVER RS. 2,500 | CASH ON DELIVERY (COD) AVAILABLE ✨' },
   heroBadge: { type: String, default: 'HAUTE PARFUMERIE COLLECTION' },
   heroTitle: { type: String, default: 'SCENT YOUR UNFORGETTABLE STORY' },
-  heroSubtitle: { type: String, default: 'Masterpiece French-grade impressions crafted with 35% pure oil concentration. Exquisite sillage that lingers 14+ hours on skin and fabrics.' },
+  heroSubtitle: { type: String, default: 'Masterpiece French-grade impressions crafted with 35% pure oil concentration. Exquisite sillage that lingers 8+ hours on skin and fabrics.' },
   heroBtnText: { type: String, default: 'SHOP BEST SELLERS' },
   heroSecondaryBtnText: { type: String, default: 'EXPLORE RUKH (رخ)' },
   heroImageUrl: { type: String, default: '/images/rove-rukh-banner.jpg' },
   deliveryCharge: { type: Number, default: 200 },
   freeDeliveryThreshold: { type: Number, default: 2500 },
   bankDetails: { type: String, default: '' },
-  facebookPixelId: { type: String, default: '' }
+  facebookPixelId: { type: String, default: '' },
+  adminNotificationEmail: { type: String, default: 'rovescentsofficial@gmail.com' },
+  smtpUser: { type: String, default: 'rovescentsofficial@gmail.com' },
+  smtpPass: { type: String, default: '' },
+  smtpHost: { type: String, default: '' },
+  smtpPort: { type: String, default: '' }
 }, { timestamps: true, strict: false });
 
 export default mongoose.models.Setting || mongoose.model('Setting', SettingSchema);

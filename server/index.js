@@ -15,6 +15,7 @@ import Order from './models/Order.js';
 import Coupon from './models/Coupon.js';
 import Setting from './models/Setting.js';
 import Review from './models/Review.js';
+import { sendNewOrderEmails, sendOrderStatusUpdateEmail, sendTestEmail } from './email.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -623,18 +624,31 @@ app.post('/api/orders', async (req, res) => {
   }
 
   saveDB(db);
+
+  // Trigger luxury email notifications asynchronously (non-blocking)
+  (async () => {
+    try {
+      const dbSettings = req.db ? (await Setting.findOne({ key: 'store_settings' }).lean() || db.settings) : db.settings;
+      await sendNewOrderEmails(newOrder, dbSettings || {});
+    } catch (emailErr) {
+      console.warn('[Email Service Warning]:', emailErr.message);
+    }
+  })();
+
   res.status(201).json(newOrder);
 });
 
 app.put('/api/orders/:id/status', async (req, res) => {
+  const newStatus = req.body.status;
+  let targetOrder = null;
+
   try {
     if (req.db) {
-      const updated = await Order.findOneAndUpdate(
+      targetOrder = await Order.findOneAndUpdate(
         { id: req.params.id },
-        { $set: { status: req.body.status } },
+        { $set: { status: newStatus } },
         { new: true }
       ).lean();
-      return res.json(updated);
     }
   } catch (err) {
     console.warn('MongoDB order status fallback:', err.message);
@@ -642,10 +656,42 @@ app.put('/api/orders/:id/status', async (req, res) => {
 
   const db = getDB();
   const order = (db.orders || []).find(o => o.id === req.params.id);
-  if (!order) return res.status(404).json({ error: 'Order not found' });
-  order.status = req.body.status || order.status;
-  saveDB(db);
-  res.json(order);
+  if (!order && !targetOrder) return res.status(404).json({ error: 'Order not found' });
+  if (order) {
+    order.status = newStatus || order.status;
+    saveDB(db);
+  }
+
+  const finalOrder = targetOrder || order;
+
+  // Trigger order status update email asynchronously
+  (async () => {
+    try {
+      const dbSettings = req.db ? (await Setting.findOne({ key: 'store_settings' }).lean() || db.settings) : db.settings;
+      await sendOrderStatusUpdateEmail(finalOrder, newStatus, {
+        trackingNumber: req.body.trackingNumber,
+        courier: req.body.courier,
+        note: req.body.note
+      }, dbSettings || {});
+    } catch (emailErr) {
+      console.warn('[Status Email Warning]:', emailErr.message);
+    }
+  })();
+
+  res.json(finalOrder);
+});
+
+// Test Email Endpoint for Admin Verification
+app.post('/api/email/test', async (req, res) => {
+  try {
+    const db = getDB();
+    const settings = req.db ? (await Setting.findOne({ key: 'store_settings' }).lean() || db.settings) : db.settings;
+    const targetEmail = req.body.email || settings?.adminNotificationEmail || 'rovescentsofficial@gmail.com';
+    const result = await sendTestEmail(targetEmail, settings || {});
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
 });
 
 app.delete('/api/orders/:id', async (req, res) => {
@@ -913,10 +959,169 @@ app.post('/api/auth/change-password', async (req, res) => {
   res.json({ success: true, message: 'Admin credentials successfully updated.' });
 });
 
+// ==================== WORDPRESS-STYLE MEDIA LIBRARY ENDPOINTS ====================
+app.get('/api/media', async (req, res) => {
+  try {
+    const mediaList = [];
+    const seenUrls = new Set();
+
+    // 1. Files in server/uploads
+    if (fs.existsSync(uploadsDir)) {
+      try {
+        const files = fs.readdirSync(uploadsDir);
+        files.forEach(file => {
+          const ext = path.extname(file).toLowerCase();
+          if (['.jpg', '.jpeg', '.png', '.webp', '.gif', '.svg'].includes(ext)) {
+            const url = `/uploads/${file}`;
+            if (!seenUrls.has(url)) {
+              seenUrls.add(url);
+              const stats = fs.statSync(path.join(uploadsDir, file));
+              mediaList.push({
+                id: 'media-' + file,
+                name: file,
+                url,
+                size: stats.size,
+                createdAt: stats.mtime
+              });
+            }
+          }
+        });
+      } catch (e) {}
+    }
+
+    // 2. Default Public Images (/images)
+    const publicImagesDir = path.join(rootDir, 'public', 'images');
+    if (fs.existsSync(publicImagesDir)) {
+      try {
+        const files = fs.readdirSync(publicImagesDir);
+        files.forEach(file => {
+          const ext = path.extname(file).toLowerCase();
+          if (['.jpg', '.jpeg', '.png', '.webp', '.gif', '.svg'].includes(ext)) {
+            const url = `/images/${file}`;
+            if (!seenUrls.has(url)) {
+              seenUrls.add(url);
+              const stats = fs.statSync(path.join(publicImagesDir, file));
+              mediaList.push({
+                id: 'media-pub-' + file,
+                name: file,
+                url,
+                size: stats.size,
+                createdAt: stats.mtime
+              });
+            }
+          }
+        });
+      } catch (e) {}
+    }
+
+    // 3. Database stored images
+    const db = getDB();
+    (db.products || []).forEach(p => {
+      if (p.image && !seenUrls.has(p.image)) {
+        seenUrls.add(p.image);
+        mediaList.push({
+          id: 'media-prod-' + (p.id || Date.now()),
+          name: p.name + ' (Cover)',
+          url: p.image,
+          size: 0,
+          createdAt: new Date()
+        });
+      }
+      if (Array.isArray(p.galleryImages)) {
+        p.galleryImages.forEach((gImg, idx) => {
+          if (gImg && !seenUrls.has(gImg)) {
+            seenUrls.add(gImg);
+            mediaList.push({
+              id: `media-prod-${p.id}-g${idx}`,
+              name: `${p.name} (Gallery ${idx + 1})`,
+              url: gImg,
+              size: 0,
+              createdAt: new Date()
+            });
+          }
+        });
+      }
+    });
+
+    (db.banners || []).forEach(b => {
+      if (b.bannerImage && !seenUrls.has(b.bannerImage)) {
+        seenUrls.add(b.bannerImage);
+        mediaList.push({
+          id: 'media-ban-' + (b.id || Date.now()),
+          name: (b.title || 'Banner') + ' Image',
+          url: b.bannerImage,
+          size: 0,
+          createdAt: new Date()
+        });
+      }
+    });
+
+    res.json(mediaList);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/media/upload', upload.single('file'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
+
+  const file = req.file;
+  const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
+  const filename = `media-${Date.now()}-${Math.random().toString(36).substring(2, 7)}${ext}`;
+
+  if (isDiskWritable) {
+    try {
+      const targetPath = path.join(uploadsDir, filename);
+      fs.writeFileSync(targetPath, file.buffer);
+      const url = `/uploads/${filename}`;
+      return res.status(201).json({
+        id: 'media-' + filename,
+        name: file.originalname,
+        url,
+        size: file.size,
+        createdAt: new Date()
+      });
+    } catch (err) {
+      console.warn('Media upload to disk failed, falling back to base64:', err.message);
+    }
+  }
+
+  // Base64 fallback (Vercel)
+  const base64Data = `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
+  return res.status(201).json({
+    id: 'media-' + Date.now(),
+    name: file.originalname,
+    url: base64Data,
+    size: file.size,
+    createdAt: new Date()
+  });
+});
+
+app.delete('/api/media/:filename', (req, res) => {
+  const filename = req.params.filename;
+  try {
+    const filePath = path.join(uploadsDir, filename);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+      return res.json({ success: true, message: 'File deleted' });
+    }
+  } catch (e) {}
+  res.json({ success: true });
+});
+
 // Production: serve built static files if dist exists
 const distPath = path.join(rootDir, 'dist');
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));
+  // Clean URL SPA fallback (for /product/:slug, /category/:slug, /admin)
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/uploads') || req.path.startsWith('/images')) {
+      return next();
+    }
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
 }
 
 // Only listen on port if executed directly

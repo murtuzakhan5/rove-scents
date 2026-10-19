@@ -81,7 +81,7 @@ export default function ScrollRevealHero({ onExploreClick, onSelectProduct, prod
           </h1>
 
           <p className="text-xs sm:text-sm text-zinc-400 tracking-wide max-w-xl mx-auto font-light leading-relaxed">
-            {scrollY < 0.2 ? "Scroll down to witness the reveal of Pakistan's finest 16-hour French Extrait perfume." : "Encased in crystalline glass, captured on imperial marble."}
+            {scrollY < 0.2 ? "Scroll down to witness the reveal of Pakistan's finest 8+ Hours French Extrait perfume." : "Encased in crystalline glass, captured on imperial marble."}
           </p>
         </div>
 
@@ -177,7 +177,7 @@ export default function ScrollRevealHero({ onExploreClick, onSelectProduct, prod
                 🪵 BASE DRYDOWN
               </span>
               <h4 className="text-xs sm:text-sm font-bold text-white font-serif">Smoked Golden Amber</h4>
-              <p className="text-[11px] text-zinc-400 mt-0.5">Royal Sandalwood • 16+ Hours Sillage</p>
+              <p className="text-[11px] text-zinc-400 mt-0.5">Royal Sandalwood • 8+ Hours Sillage</p>
             </div>
 
           </div>

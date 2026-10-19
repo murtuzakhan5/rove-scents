@@ -238,7 +238,61 @@ export default function App() {
     fetchData();
   }, []);
 
-  // Keyboard shortcut Ctrl+Shift+A or #admin in URL to open admin login
+  // WordPress-Style Clean URL Routing & Direct /admin Access
+  useEffect(() => {
+    const handleLocationChange = () => {
+      const path = window.location.pathname.toLowerCase();
+      const hash = window.location.hash.toLowerCase();
+
+      // 1. Direct /admin or #admin
+      if (path === '/admin' || hash === '#admin') {
+        if (isAdminAuthenticated) {
+          setIsAdminOpen(true);
+        } else {
+          setIsAdminLoginOpen(true);
+        }
+        return;
+      }
+
+      // 2. Direct /product/:slug (WordPress style)
+      if (path.startsWith('/product/')) {
+        const slug = path.replace('/product/', '').replace(/\/$/, '');
+        const found = products.find(p => 
+          (p.slug && p.slug.toLowerCase() === slug) || 
+          p.id === slug || 
+          (p.name && p.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') === slug)
+        );
+        if (found) {
+          setActiveProduct(found);
+          setCurrentView('product');
+          return;
+        }
+      }
+
+      // 3. Direct /category/:slug
+      if (path.startsWith('/category/')) {
+        const catSlug = path.replace('/category/', '').replace(/\/$/, '');
+        setActiveCategory(catSlug);
+        setCurrentView('home');
+        setActiveProduct(null);
+        return;
+      }
+
+      // 4. Root / Home
+      if (path === '/' || path === '') {
+        if (currentView === 'product') {
+          setCurrentView('home');
+          setActiveProduct(null);
+        }
+      }
+    };
+
+    handleLocationChange();
+    window.addEventListener('popstate', handleLocationChange);
+    return () => window.removeEventListener('popstate', handleLocationChange);
+  }, [products, isAdminAuthenticated]);
+
+  // Keyboard shortcut Ctrl+Shift+A
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.ctrlKey && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
@@ -246,16 +300,16 @@ export default function App() {
         handleTriggerAdminAccess();
       }
     };
-
-    if (window.location.hash === '#admin') {
-      handleTriggerAdminAccess();
-    }
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isAdminAuthenticated]);
 
   const handleTriggerAdminAccess = () => {
+    if (window.location.pathname !== '/admin') {
+      try {
+        window.history.pushState({ view: 'admin' }, '', '/admin');
+      } catch (e) {}
+    }
     if (isAdminAuthenticated) {
       setIsAdminOpen(true);
     } else {
@@ -263,11 +317,17 @@ export default function App() {
     }
   };
 
-  // Open Full-Page Product View (100% Reliable React State)
-  const handleOpenProductPage = (prod) => {
+  // Open Full-Page Product View (WordPress-style clean URL)
+  const handleOpenProductPage = (prod, updateUrl = true) => {
     if (!prod) return;
     setActiveProduct(prod);
     setCurrentView('product');
+    if (updateUrl) {
+      const slug = prod.slug || prod.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      try {
+        window.history.pushState({ view: 'product', id: prod.id }, '', `/product/${slug}`);
+      } catch (e) {}
+    }
     try {
       trackViewContent(prod);
     } catch (e) {}
@@ -275,13 +335,33 @@ export default function App() {
   };
 
   // Back to Storefront
-  const handleBackToStore = () => {
+  const handleBackToStore = (updateUrl = true) => {
     setCurrentView('home');
     setActiveProduct(null);
+    if (updateUrl) {
+      try {
+        window.history.pushState({ view: 'home' }, '', '/');
+      } catch (e) {}
+    }
     try {
       trackPageView();
     } catch (e) {}
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Category Selector with Clean URL
+  const handleCategorySelect = (catId, updateUrl = true) => {
+    setActiveCategory(catId);
+    if (currentView !== 'home') {
+      setCurrentView('home');
+      setActiveProduct(null);
+    }
+    if (updateUrl) {
+      try {
+        const newUrl = catId === 'all' ? '/' : `/category/${catId}`;
+        window.history.pushState({ view: 'category', category: catId }, '', newUrl);
+      } catch (e) {}
+    }
   };
 
   // Cart operations
@@ -363,7 +443,15 @@ export default function App() {
     const target = normalize(activeCategory);
     displayProducts = displayProducts.filter(p => {
       const pCat = normalize(p.category);
-      return pCat === target || (pCat.length > 3 && target.length > 3 && (pCat.includes(target) || target.includes(pCat)));
+      const inPrimary = pCat === target || (pCat.length > 3 && target.length > 3 && (pCat.includes(target) || target.includes(pCat)));
+      if (inPrimary) return true;
+      if (Array.isArray(p.categories)) {
+        return p.categories.some(cat => {
+          const nCat = normalize(cat);
+          return nCat === target || (nCat.length > 3 && target.length > 3 && (nCat.includes(target) || target.includes(nCat)));
+        });
+      }
+      return false;
     });
   }
 
@@ -396,10 +484,7 @@ export default function App() {
         settings={settings}
         categories={categories}
         activeCategory={activeCategory}
-        setActiveCategory={(cat) => {
-          setActiveCategory(cat);
-          if (currentView !== 'home') handleBackToStore();
-        }}
+        setActiveCategory={(cat) => handleCategorySelect(cat)}
         cartCount={cartCount}
         cartTotal={cartTotal}
         setIsCartOpen={setIsCartOpen}
@@ -433,7 +518,7 @@ export default function App() {
               onSelectProduct={handleOpenProductPage}
               onDirectCheckout={handleDirectCheckout}
               onShopAll={() => {
-                setActiveCategory('all');
+                handleCategorySelect('all');
                 const el = document.getElementById('catalog-section');
                 if (el) el.scrollIntoView({ behavior: 'smooth' });
               }}
@@ -446,7 +531,7 @@ export default function App() {
               categories={categories}
               activeCategory={activeCategory}
               setActiveCategory={(catId) => {
-                setActiveCategory(catId);
+                handleCategorySelect(catId);
                 const el = document.getElementById('catalog-section');
                 if (el) el.scrollIntoView({ behavior: 'smooth' });
               }}
@@ -595,7 +680,7 @@ export default function App() {
                 Why Our Impressions Outperform The Market
               </h2>
               <p className="text-xs sm:text-sm text-zinc-400 max-w-2xl mx-auto leading-relaxed">
-                Most local perfumes use cheap commercial water-diluted bases with only 10-15% oil concentration. ROVE Scents bottles are individually cured with <strong>35% Pure Extrait De Parfum French oils</strong> for rich complexity and true 16-hour longevity.
+                Most local perfumes use cheap commercial water-diluted bases with only 10-15% oil concentration. ROVE Scents bottles are individually cured with <strong>35% Pure Extrait De Parfum French oils</strong> for rich complexity and true 8+ hours longevity.
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-6 text-left">

@@ -30,8 +30,12 @@ import {
   AlertTriangle,
   Eye,
   EyeOff,
-  Sparkles
+  Sparkles,
+  Mail,
+  FolderOpen
 } from 'lucide-react';
+import MediaLibraryModal from './MediaLibraryModal';
+import EmailSettingsTab from './EmailSettingsTab';
 
 export default function AdminDashboard({
   onClose,
@@ -50,7 +54,28 @@ export default function AdminDashboard({
   onCategoriesUpdated,
   onBannersUpdated
 }) {
-  const [activeTab, setActiveTab] = useState('overview'); // overview, products, categories, banners, orders, coupons, settings, reviews
+  const [activeTab, setActiveTab] = useState('overview'); // overview, products, categories, banners, orders, coupons, settings, reviews, media, email
+
+  // Media Library Picker Modal State
+  const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
+  const [mediaPickerTarget, setMediaPickerTarget] = useState(null); // 'product-main' | 'product-gallery' | 'banner-image' | 'banner-bottle'
+
+  const handleMediaSelect = (imageUrl) => {
+    if (mediaPickerTarget === 'product-main') {
+      setProductForm(prev => ({ ...prev, image: imageUrl }));
+    } else if (mediaPickerTarget === 'product-gallery') {
+      setProductForm(prev => ({
+        ...prev,
+        galleryImages: [...(prev.galleryImages || []), imageUrl]
+      }));
+    } else if (mediaPickerTarget === 'banner-image') {
+      setBannerForm(prev => ({ ...prev, bannerImage: imageUrl }));
+    } else if (mediaPickerTarget === 'banner-bottle') {
+      setBannerForm(prev => ({ ...prev, bottleImage: imageUrl }));
+    }
+    setIsMediaModalOpen(false);
+    setMediaPickerTarget(null);
+  };
 
   // Product Form State
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
@@ -58,6 +83,9 @@ export default function AdminDashboard({
   const [productForm, setProductForm] = useState({
     name: '',
     category: 'men',
+    categories: ['men'],
+    hasVariants: false,
+    variants: [],
     gender: 'Men',
     inspiredBy: '',
     price: 2450,
@@ -526,9 +554,16 @@ export default function AdminDashboard({
   // Open Edit Product Modal
   const openEditModal = (prod) => {
     setEditingProduct(prod);
+    const prodCats = Array.isArray(prod.categories) && prod.categories.length > 0
+      ? prod.categories
+      : (prod.category ? [prod.category] : ['men']);
     setProductForm({ 
       ...prod,
-      galleryImages: Array.isArray(prod.galleryImages) ? prod.galleryImages : [prod.image]
+      categories: prodCats,
+      category: prod.category || prodCats[0] || 'men',
+      hasVariants: !!prod.hasVariants,
+      variants: Array.isArray(prod.variants) ? prod.variants : [],
+      galleryImages: Array.isArray(prod.galleryImages) ? prod.galleryImages : (prod.image ? [prod.image] : [])
     });
     setIsProductModalOpen(true);
   };
@@ -546,6 +581,12 @@ export default function AdminDashboard({
     setProductForm({
       name: '',
       category: defaultCat,
+      categories: [defaultCat],
+      hasVariants: false,
+      variants: [
+        { id: 'var-1', name: '50ml', bottleSize: '50ml Extrait De Parfum', price: 2450, comparePrice: 3500, stock: 50 },
+        { id: 'var-2', name: '100ml', bottleSize: '100ml Extrait De Parfum', price: 4200, comparePrice: 5800, stock: 25 }
+      ],
       gender: 'Men',
       inspiredBy: '',
       price: 2450,
@@ -572,14 +613,25 @@ export default function AdminDashboard({
   const handleSaveProduct = async (e) => {
     e.preventDefault();
     
+    const finalCats = Array.isArray(productForm.categories) && productForm.categories.length > 0
+      ? productForm.categories
+      : [productForm.category || 'men'];
+
     const updatedProd = editingProduct 
-      ? { ...editingProduct, ...productForm } 
+      ? { 
+          ...editingProduct, 
+          ...productForm,
+          category: finalCats[0] || 'men',
+          categories: finalCats
+        } 
       : { 
           id: 'prod-' + Date.now(), 
           slug: (productForm.name || 'perfume').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
           rating: 5.0,
           reviewsCount: 1,
-          ...productForm 
+          ...productForm,
+          category: finalCats[0] || 'men',
+          categories: finalCats
         };
 
     // 1. Instantly dual-write to localStorage for permanent Vercel persistence
@@ -720,6 +772,21 @@ export default function AdminDashboard({
     } catch (err) {
       alert('Error saving settings');
     }
+  };
+
+  const handleSaveEmailSettings = async (emailData) => {
+    const updated = { ...settingsForm, ...emailData };
+    setSettingsForm(updated);
+    const res = await fetch('/api/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updated)
+    });
+    if (res.ok) {
+      if (onRefreshData) onRefreshData();
+      return true;
+    }
+    throw new Error('Failed to save email settings');
   };
 
   // Filtered Products
@@ -868,6 +935,18 @@ export default function AdminDashboard({
             </button>
 
             <button
+              onClick={() => setActiveTab('media')}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-semibold tracking-wider transition ${
+                activeTab === 'media'
+                  ? 'bg-gold-500/20 text-gold-300 border-l-4 border-gold-400 font-bold'
+                  : 'text-zinc-400 hover:bg-[#1a1a1a] hover:text-white'
+              }`}
+            >
+              <FolderOpen size={16} />
+              <span>Media Library</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('orders')}
               className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs font-semibold tracking-wider transition ${
                 activeTab === 'orders'
@@ -913,6 +992,18 @@ export default function AdminDashboard({
             <div className="text-[10px] uppercase font-bold tracking-widest text-zinc-500 px-3 py-2 pt-4">
               Configuration
             </div>
+
+            <button
+              onClick={() => setActiveTab('email')}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-semibold tracking-wider transition ${
+                activeTab === 'email'
+                  ? 'bg-gold-500/20 text-gold-300 border-l-4 border-gold-400 font-bold'
+                  : 'text-zinc-400 hover:bg-[#1a1a1a] hover:text-white'
+              }`}
+            >
+              <Mail size={16} />
+              <span>Order Email Alerts</span>
+            </button>
 
             <button
               onClick={() => setActiveTab('settings')}
@@ -2157,6 +2248,21 @@ export default function AdminDashboard({
             </div>
           )}
 
+          {/* ================= 7. TAB: WORDPRESS-STYLE MEDIA LIBRARY ================= */}
+          {activeTab === 'media' && (
+            <div className="space-y-6 max-w-6xl">
+              <MediaLibraryModal isModal={false} />
+            </div>
+          )}
+
+          {/* ================= 8. TAB: EMAIL & ORDERS ALERTS ================= */}
+          {activeTab === 'email' && (
+            <EmailSettingsTab
+              settings={settingsForm}
+              onSaveSettings={handleSaveEmailSettings}
+            />
+          )}
+
         </main>
       </div>
 
@@ -2202,85 +2308,101 @@ export default function AdminDashboard({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-[11px] text-zinc-300 font-semibold">Category *</label>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsProductModalOpen(false);
-                        setActiveTab('categories');
-                      }}
-                      className="text-[10px] text-gold-400 hover:text-gold-300 underline font-medium"
-                      title="Manage and create categories"
-                    >
-                      + Manage
-                    </button>
+              {/* WordPress-Style Multi-Category Selector */}
+              <div className="p-3.5 rounded-xl bg-[#171717] border border-[#262626]">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <label className="block text-[11px] text-zinc-200 font-bold uppercase tracking-wider">
+                      Categories (Assign Multiple - WordPress Style) *
+                    </label>
+                    <span className="text-[10px] text-zinc-400">
+                      Check all categories this perfume belongs to (e.g. Men's Luxury + Nikkah Favours)
+                    </span>
                   </div>
-                  <select
-                    value={productForm.category}
-                    onChange={(e) => {
-                      if (e.target.value === '__add_new__') {
-                        const name = prompt('Enter new category display name (e.g. Nikkah Favours):');
-                        if (name && name.trim()) {
-                          const slug = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
-                          const newCatObj = { id: slug, name: name.trim(), image: '/images/cat-all.jpg' };
-                          const updated = [...categoriesList, newCatObj];
-                          handleSaveCategories(updated);
-                          setProductForm(prev => ({ ...prev, category: slug }));
-                        }
-                        return;
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const name = prompt('Enter new category display name (e.g. Nikkah Favours):');
+                      if (name && name.trim()) {
+                        const slug = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
+                        const newCatObj = { id: slug, name: name.trim(), image: '/images/cat-all.jpg' };
+                        const updated = [...categoriesList, newCatObj];
+                        handleSaveCategories(updated);
+                        setProductForm(prev => {
+                          const existing = Array.isArray(prev.categories) ? prev.categories : [prev.category || 'men'];
+                          return {
+                            ...prev,
+                            category: slug,
+                            categories: [...existing, slug]
+                          };
+                        });
                       }
-                      setProductForm({ ...productForm, category: e.target.value });
                     }}
-                    className="w-full bg-[#1c1c1c] border border-[#333] rounded px-3 py-2 text-xs text-white focus:outline-none focus:border-gold-500"
+                    className="px-2.5 py-1 rounded bg-gold-500/20 hover:bg-gold-500 hover:text-black border border-gold-500/30 text-gold-300 text-[10px] font-bold transition"
                   >
-                    {(() => {
-                      const allCatsMap = new Map();
-                      (categoriesList || []).forEach(c => {
-                        if (c?.id && c.id !== 'all') allCatsMap.set(c.id.toLowerCase().trim(), c);
-                      });
-                      (categories || []).forEach(c => {
-                        if (c?.id && c.id !== 'all' && !allCatsMap.has(c.id.toLowerCase().trim())) {
-                          allCatsMap.set(c.id.toLowerCase().trim(), c);
-                        }
-                      });
-                      try {
-                        const local = JSON.parse(localStorage.getItem('rove_custom_categories') || '[]');
-                        if (Array.isArray(local)) {
-                          local.forEach(c => {
-                            if (c?.id && c.id !== 'all' && !allCatsMap.has(c.id.toLowerCase().trim())) {
-                              allCatsMap.set(c.id.toLowerCase().trim(), c);
-                            }
-                          });
-                        }
-                      } catch (e) {}
-
-                      const options = Array.from(allCatsMap.values()).map(cat => (
-                        <option key={cat.id} value={cat.id} className="bg-[#181818] text-white">
-                          {cat.name}
-                        </option>
-                      ));
-
-                      const currentCatStr = typeof productForm.category === 'string' ? productForm.category.trim() : '';
-                      if (currentCatStr && !allCatsMap.has(currentCatStr.toLowerCase())) {
-                        options.unshift(
-                          <option key={currentCatStr} value={currentCatStr} className="bg-[#181818] text-white">
-                            {currentCatStr}
-                          </option>
-                        );
-                      }
-
-                      return options;
-                    })()}
-                    <option value="__add_new__" className="bg-[#222] text-gold-300 font-bold">
-                      + Create New Category...
-                    </option>
-                  </select>
+                    + Add New Category
+                  </button>
                 </div>
+
+                <div className="flex flex-wrap gap-2 pt-1 max-h-36 overflow-y-auto">
+                  {(() => {
+                    const allCatsMap = new Map();
+                    (categoriesList || []).forEach(c => {
+                      if (c?.id && c.id !== 'all') allCatsMap.set(c.id.toLowerCase().trim(), c);
+                    });
+                    (categories || []).forEach(c => {
+                      if (c?.id && c.id !== 'all' && !allCatsMap.has(c.id.toLowerCase().trim())) {
+                        allCatsMap.set(c.id.toLowerCase().trim(), c);
+                      }
+                    });
+
+                    const selectedCats = Array.isArray(productForm.categories) && productForm.categories.length > 0
+                      ? productForm.categories
+                      : (productForm.category ? [productForm.category] : ['men']);
+
+                    return Array.from(allCatsMap.values()).map(cat => {
+                      const isChecked = selectedCats.includes(cat.id);
+                      return (
+                        <label
+                          key={cat.id}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs cursor-pointer transition select-none ${
+                            isChecked
+                              ? 'bg-gold-500/20 border-gold-400 text-gold-300 font-bold'
+                              : 'bg-[#1f1f1f] border-[#333] text-zinc-300 hover:border-zinc-500'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={(e) => {
+                              let nextCats;
+                              if (e.target.checked) {
+                                nextCats = [...selectedCats, cat.id];
+                              } else {
+                                nextCats = selectedCats.filter(id => id !== cat.id);
+                              }
+                              if (nextCats.length === 0) nextCats = [cat.id];
+                              setProductForm(prev => ({
+                                ...prev,
+                                categories: nextCats,
+                                category: nextCats[0] || 'men'
+                              }));
+                            }}
+                            className="hidden"
+                          />
+                          {isChecked && <Check size={12} className="text-gold-400 stroke-[3]" />}
+                          <span>{cat.name}</span>
+                        </label>
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
+
+              {/* Base Price & Compare Price */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] text-zinc-300 font-semibold mb-1">Price (PKR) *</label>
+                  <label className="block text-[11px] text-zinc-300 font-semibold mb-1">Base Price (PKR) *</label>
                   <input
                     type="number"
                     required
@@ -2300,7 +2422,7 @@ export default function AdminDashboard({
                 </div>
               </div>
 
-              {/* Main Image Input + Direct Upload Button */}
+              {/* Main Image Input + Direct Upload Button + Media Library Picker */}
               <div>
                 <label className="block text-[11px] text-zinc-300 font-semibold mb-1">
                   Primary Bottle Image (Shows on Product Card & Main View)
@@ -2314,9 +2436,21 @@ export default function AdminDashboard({
                     required
                     value={productForm.image}
                     onChange={(e) => setProductForm({ ...productForm, image: e.target.value })}
-                    placeholder="/images/... or upload from computer"
+                    placeholder="/images/... or select from Media Library"
                     className="flex-grow bg-[#1c1c1c] border border-[#333] rounded px-3 py-2 text-xs text-white focus:outline-none focus:border-gold-500"
                   />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMediaPickerTarget('product-main');
+                      setIsMediaModalOpen(true);
+                    }}
+                    className="px-3 py-2 rounded bg-[#202020] hover:bg-gold-500 hover:text-black border border-gold-500/40 text-gold-300 text-xs font-bold transition flex items-center gap-1.5 shrink-0"
+                    title="Choose from WordPress-style Media Library"
+                  >
+                    <FolderOpen size={14} />
+                    <span>Media Library</span>
+                  </button>
                   <label className="px-3.5 py-2 rounded bg-gold-500/20 hover:bg-gold-500 hover:text-black border border-gold-500/40 text-gold-300 text-xs font-bold cursor-pointer transition flex items-center gap-1.5 shrink-0">
                     <Upload size={14} />
                     <span>{uploadingImage ? 'Uploading...' : 'Browse PC'}</span>
@@ -2327,7 +2461,7 @@ export default function AdminDashboard({
 
               {/* Gallery Images (Multiple Angles & Views) */}
               <div className="p-3 rounded-xl bg-[#181818] border border-[#262626] space-y-2.5">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <div>
                     <label className="block text-[11px] text-zinc-200 font-bold uppercase tracking-wider">
                       Product Gallery Angles (Multi-Image Showcase)
@@ -2336,11 +2470,24 @@ export default function AdminDashboard({
                       Upload multiple angles, packaging photos, or aesthetic shots for the full product page.
                     </p>
                   </div>
-                  <label className="px-3 py-1.5 rounded-lg bg-[#252525] hover:bg-gold-500 hover:text-black border border-zinc-600 text-zinc-300 text-xs font-semibold cursor-pointer transition flex items-center gap-1.5 shrink-0">
-                    <Plus size={13} />
-                    <span>{uploadingGallery ? 'Uploading...' : '+ Add Gallery Shots'}</span>
-                    <input type="file" accept="image/*" multiple onChange={handleGalleryUpload} className="hidden" />
-                  </label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMediaPickerTarget('product-gallery');
+                        setIsMediaModalOpen(true);
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-[#222] hover:bg-gold-500 hover:text-black border border-gold-500/40 text-gold-300 text-xs font-semibold transition flex items-center gap-1.5 shrink-0"
+                    >
+                      <FolderOpen size={13} />
+                      <span>+ Media Library</span>
+                    </button>
+                    <label className="px-3 py-1.5 rounded-lg bg-[#252525] hover:bg-gold-500 hover:text-black border border-zinc-600 text-zinc-300 text-xs font-semibold cursor-pointer transition flex items-center gap-1.5 shrink-0">
+                      <Plus size={13} />
+                      <span>{uploadingGallery ? 'Uploading...' : '+ Upload PC'}</span>
+                      <input type="file" accept="image/*" multiple onChange={handleGalleryUpload} className="hidden" />
+                    </label>
+                  </div>
                 </div>
 
                 {/* Previews List */}
@@ -2367,6 +2514,165 @@ export default function AdminDashboard({
                     <p className="text-[11px] text-zinc-500 italic py-1">No additional gallery images added yet.</p>
                   )}
                 </div>
+              </div>
+
+              {/* ================= SIZE / BOTTLE VARIATIONS (WOOCOMMERCE / SHOPIFY STYLE) ================= */}
+              <div className="p-3.5 rounded-xl bg-[#171717] border border-[#2a2a2a] space-y-3">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div>
+                    <label className="block text-[11px] text-gold-300 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                      <Sliders size={13} />
+                      <span>Bottle Sizes & Volume Options (e.g. 50ml, 100ml, 500ml)</span>
+                    </label>
+                    <p className="text-[10px] text-zinc-400">
+                      Enable if this perfume is sold in multiple bottle sizes with custom pricing
+                    </p>
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer bg-[#202020] px-3 py-1.5 rounded-lg border border-[#333] hover:border-gold-500/50 transition">
+                    <input
+                      type="checkbox"
+                      checked={!!productForm.hasVariants}
+                      onChange={(e) => {
+                        const enabled = e.target.checked;
+                        setProductForm(prev => {
+                          const defaultVars = [
+                            { id: 'var-1', name: '50ml', bottleSize: '50ml Extrait De Parfum', price: prev.price || 2450, comparePrice: prev.comparePrice || 3500, stock: prev.stock || 50 },
+                            { id: 'var-2', name: '100ml', bottleSize: '100ml Extrait De Parfum', price: Math.round((prev.price || 2450) * 1.7), comparePrice: Math.round((prev.comparePrice || 3500) * 1.7), stock: 25 }
+                          ];
+                          return {
+                            ...prev,
+                            hasVariants: enabled,
+                            variants: enabled && (!prev.variants || prev.variants.length === 0) ? defaultVars : (prev.variants || [])
+                          };
+                        });
+                      }}
+                      className="w-4 h-4 rounded text-gold-500 focus:ring-gold-500 bg-[#1c1c1c] border-[#333]"
+                    />
+                    <span className="text-xs font-bold text-white">Enable Size Options</span>
+                  </label>
+                </div>
+
+                {productForm.hasVariants && (
+                  <div className="space-y-2 pt-2">
+                    <div className="space-y-2">
+                      {(productForm.variants || []).map((v, vIdx) => (
+                        <div key={v.id || vIdx} className="p-3 rounded-lg bg-[#121212] border border-[#262626] flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                          <div className="w-full sm:w-24">
+                            <label className="block text-[9px] text-zinc-400 font-semibold mb-0.5">Size Name</label>
+                            <input
+                              type="text"
+                              required
+                              value={v.name}
+                              onChange={(e) => {
+                                const updatedVars = [...(productForm.variants || [])];
+                                updatedVars[vIdx] = { ...v, name: e.target.value, bottleSize: `${e.target.value} Extrait De Parfum` };
+                                setProductForm(prev => ({ ...prev, variants: updatedVars }));
+                              }}
+                              placeholder="50ml"
+                              className="w-full bg-[#1c1c1c] border border-[#333] rounded px-2 py-1 text-xs text-white font-bold focus:border-gold-500"
+                            />
+                          </div>
+
+                          <div className="flex-grow">
+                            <label className="block text-[9px] text-zinc-400 font-semibold mb-0.5">Volume Description</label>
+                            <input
+                              type="text"
+                              value={v.bottleSize}
+                              onChange={(e) => {
+                                const updatedVars = [...(productForm.variants || [])];
+                                updatedVars[vIdx] = { ...v, bottleSize: e.target.value };
+                                setProductForm(prev => ({ ...prev, variants: updatedVars }));
+                              }}
+                              placeholder="50ml Extrait De Parfum"
+                              className="w-full bg-[#1c1c1c] border border-[#333] rounded px-2 py-1 text-xs text-zinc-300 focus:border-gold-500"
+                            />
+                          </div>
+
+                          <div className="w-full sm:w-24">
+                            <label className="block text-[9px] text-zinc-400 font-semibold mb-0.5">Price (PKR)</label>
+                            <input
+                              type="number"
+                              required
+                              value={v.price}
+                              onChange={(e) => {
+                                const updatedVars = [...(productForm.variants || [])];
+                                updatedVars[vIdx] = { ...v, price: Number(e.target.value) };
+                                setProductForm(prev => ({ ...prev, variants: updatedVars }));
+                              }}
+                              className="w-full bg-[#1c1c1c] border border-[#333] rounded px-2 py-1 text-xs text-gold-300 font-bold focus:border-gold-500"
+                            />
+                          </div>
+
+                          <div className="w-full sm:w-24">
+                            <label className="block text-[9px] text-zinc-400 font-semibold mb-0.5">Old Price (PKR)</label>
+                            <input
+                              type="number"
+                              value={v.comparePrice || ''}
+                              onChange={(e) => {
+                                const updatedVars = [...(productForm.variants || [])];
+                                updatedVars[vIdx] = { ...v, comparePrice: Number(e.target.value) };
+                                setProductForm(prev => ({ ...prev, variants: updatedVars }));
+                              }}
+                              className="w-full bg-[#1c1c1c] border border-[#333] rounded px-2 py-1 text-xs text-zinc-400 focus:border-gold-500"
+                            />
+                          </div>
+
+                          <div className="w-full sm:w-16">
+                            <label className="block text-[9px] text-zinc-400 font-semibold mb-0.5">Stock</label>
+                            <input
+                              type="number"
+                              value={v.stock}
+                              onChange={(e) => {
+                                const updatedVars = [...(productForm.variants || [])];
+                                updatedVars[vIdx] = { ...v, stock: Number(e.target.value) };
+                                setProductForm(prev => ({ ...prev, variants: updatedVars }));
+                              }}
+                              className="w-full bg-[#1c1c1c] border border-[#333] rounded px-2 py-1 text-xs text-zinc-300 text-center focus:border-gold-500"
+                            />
+                          </div>
+
+                          <div className="self-end sm:self-center pt-2 sm:pt-4">
+                            <button
+                              type="button"
+                              disabled={(productForm.variants || []).length <= 1}
+                              onClick={() => {
+                                const updatedVars = (productForm.variants || []).filter((_, idx) => idx !== vIdx);
+                                setProductForm(prev => ({ ...prev, variants: updatedVars }));
+                              }}
+                              className="p-1.5 rounded bg-red-950/40 border border-red-500/30 text-red-400 hover:text-white hover:bg-red-500 transition disabled:opacity-30 disabled:cursor-not-allowed"
+                              title="Delete variation"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex justify-end pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const curr = productForm.variants || [];
+                          const nextNum = curr.length === 2 ? '500ml' : `${(curr.length + 1) * 50}ml`;
+                          const newVar = {
+                            id: 'var-' + Date.now(),
+                            name: nextNum,
+                            bottleSize: `${nextNum} Extrait De Parfum`,
+                            price: (curr[curr.length - 1]?.price || 2450) + 1500,
+                            comparePrice: (curr[curr.length - 1]?.comparePrice || 3500) + 2000,
+                            stock: 20
+                          };
+                          setProductForm(prev => ({ ...prev, variants: [...(prev.variants || []), newVar] }));
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-gold-500/20 hover:bg-gold-500 hover:text-black border border-gold-500/40 text-gold-300 text-xs font-bold transition flex items-center gap-1.5"
+                      >
+                        <Plus size={13} />
+                        <span>+ Add Another Size Option (e.g. 500ml)</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Fragrance Notes Breakdown */}
@@ -2519,6 +2825,18 @@ export default function AdminDashboard({
                       placeholder="/images/rove-rukh-banner.jpg or https://..."
                       className="flex-grow bg-[#1c1c1c] border border-[#333] rounded px-3 py-2 text-xs text-white focus:outline-none focus:border-gold-500"
                     />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMediaPickerTarget('banner-image');
+                        setIsMediaModalOpen(true);
+                      }}
+                      className="px-3.5 py-2 rounded bg-[#202020] hover:bg-gold-500 hover:text-black border border-gold-500/40 text-gold-300 text-xs font-bold transition flex items-center gap-1.5 shrink-0"
+                      title="Choose from WordPress-style Media Library"
+                    >
+                      <FolderOpen size={14} />
+                      <span>Media Library</span>
+                    </button>
                     <label className="px-4 py-2 rounded bg-gold-500/20 hover:bg-gold-500 hover:text-black border border-gold-500/40 text-gold-300 text-xs font-bold cursor-pointer transition flex items-center gap-1.5 shrink-0">
                       <Upload size={14} />
                       <span>{uploadingBannerImage ? 'Uploading...' : 'Upload PC'}</span>
@@ -2804,6 +3122,19 @@ export default function AdminDashboard({
             </div>
           </div>
         </div>
+      )}
+
+      {/* ================= MODAL: WORDPRESS-STYLE MEDIA LIBRARY PICKER ================= */}
+      {isMediaModalOpen && (
+        <MediaLibraryModal
+          isOpen={isMediaModalOpen}
+          isModal={true}
+          onClose={() => {
+            setIsMediaModalOpen(false);
+            setMediaPickerTarget(null);
+          }}
+          onSelectImage={handleMediaSelect}
+        />
       )}
 
     </div>
