@@ -282,6 +282,7 @@ export const initialSettings = {
   whatsappDisplay: '+92 300 1234567',
   contactEmail: 'support@rovescents.pk',
   adminNotificationEmail: 'rovescentsofficial@gmail.com',
+  facebookPixelId: '1295560746037678',
   announcementText: '✨ FREE NATIONWIDE SHIPPING ON ORDERS OVER RS. 2,500  •  🚚 CASH ON DELIVERY AVAILABLE ACROSS PAKISTAN  •  💎 100% FRENCH EXTRAIT OILS (35% CONCENTRATION)  •  ⏳ 8+ HOURS LONGEVITY GUARANTEE  •  🔄 7-DAY HASSLE-FREE EXCHANGE',
   heroBadge: 'HAUTE PARFUMERIE COLLECTION',
   heroTitle: 'SCENT YOUR UNFORGETTABLE STORY',

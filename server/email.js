@@ -2,8 +2,9 @@ import nodemailer from 'nodemailer';
 
 // Helper to create transport based on environment or settings
 function createTransporter(settings = {}) {
-  const user = settings?.smtpUser || process.env.SMTP_USER || 'rovescentsofficial@gmail.com';
-  const pass = settings?.smtpPass || process.env.SMTP_PASS;
+  const user = (settings?.smtpUser || process.env.SMTP_USER || 'rovescentsofficial@gmail.com').trim();
+  const rawPass = settings?.smtpPass || process.env.SMTP_PASS || '';
+  const pass = rawPass.replace(/\s+/g, '').trim();
 
   if (!pass) {
     return null;
@@ -12,25 +13,36 @@ function createTransporter(settings = {}) {
   // If host is explicitly provided in settings, use custom SMTP
   if (settings?.smtpHost || process.env.SMTP_HOST) {
     return nodemailer.createTransport({
-      host: settings?.smtpHost || process.env.SMTP_HOST,
+      host: (settings?.smtpHost || process.env.SMTP_HOST).trim(),
       port: Number(settings?.smtpPort || process.env.SMTP_PORT || 465),
-      secure: (settings?.smtpPort || process.env.SMTP_PORT) === '465' || true,
-      auth: { user, pass }
+      secure: String(settings?.smtpPort || process.env.SMTP_PORT || '465') === '465',
+      auth: { user, pass },
+      tls: { rejectUnauthorized: false }
     });
   }
 
-  // Default: Gmail service
+  // Default: direct Gmail SSL
   return nodemailer.createTransport({
-    service: 'gmail',
-    auth: { user, pass }
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
+    auth: { user, pass },
+    tls: { rejectUnauthorized: false }
   });
 }
 
 // 1. Send New Order Emails (Admin alert + Customer confirmation)
 export async function sendNewOrderEmails(order, settings = {}) {
-  const adminEmail = settings?.adminNotificationEmail || process.env.ADMIN_NOTIFICATION_EMAIL || 'rovescentsofficial@gmail.com';
-  const fromEmail = settings?.smtpUser || process.env.SMTP_USER || 'rovescentsofficial@gmail.com';
+  const adminEmail = (settings?.adminNotificationEmail || process.env.ADMIN_NOTIFICATION_EMAIL || 'rovescentsofficial@gmail.com').trim();
+  const fromEmail = (settings?.smtpUser || process.env.SMTP_USER || 'rovescentsofficial@gmail.com').trim();
   const storeName = settings?.storeName || 'ROVE SCENTS';
+
+  const custName = order.customer?.fullName || order.customerName || 'Customer';
+  const custPhone = order.customer?.phone || order.phone || 'N/A';
+  const custEmail = (order.customer?.email || order.email || '').trim();
+  const custAddress = order.customer?.address || order.address || 'N/A';
+  const custCity = order.customer?.city || order.city || '';
+  const custNotes = order.customer?.notes || order.notes || '';
 
   const transporter = createTransporter(settings);
 
@@ -48,7 +60,7 @@ export async function sendNewOrderEmails(order, settings = {}) {
   `).join('');
 
   // 1A. Admin Alert Email
-  const adminSubject = `🛒 [NEW ORDER] #${order.id || order._id} • Rs. ${(order.total || 0).toLocaleString()} • ${order.customer?.fullName || 'Customer'}`;
+  const adminSubject = `🛒 [NEW ORDER] #${order.id || order._id} • Rs. ${(order.total || 0).toLocaleString()} • ${custName}`;
   const adminHtml = `
   <!DOCTYPE html>
   <html>
@@ -84,24 +96,24 @@ export async function sendNewOrderEmails(order, settings = {}) {
         <table style="width: 100%; font-size: 13px; line-height: 1.6; margin-bottom: 20px;">
           <tr>
             <td style="width: 120px; color: #888;">Name:</td>
-            <td style="color: #fff; font-weight: 600;">${order.customer?.fullName || 'N/A'}</td>
+            <td style="color: #fff; font-weight: 600;">${custName}</td>
           </tr>
           <tr>
             <td style="color: #888;">Phone / Mobile:</td>
-            <td><a href="tel:${order.customer?.phone}" style="color: #60a5fa; text-decoration: none; font-weight: bold;">${order.customer?.phone || 'N/A'}</a> (WhatsApp: <a href="https://wa.me/${(order.customer?.phone || '').replace(/[^0-9]/g, '')}" style="color: #22c55e; text-decoration: none;">Chat on WhatsApp</a>)</td>
+            <td><a href="tel:${custPhone}" style="color: #60a5fa; text-decoration: none; font-weight: bold;">${custPhone}</a> (WhatsApp: <a href="https://wa.me/${custPhone.replace(/[^0-9]/g, '')}" style="color: #22c55e; text-decoration: none;">Chat on WhatsApp</a>)</td>
           </tr>
           <tr>
             <td style="color: #888;">Email:</td>
-            <td style="color: #ccc;">${order.customer?.email || 'Not provided'}</td>
+            <td style="color: #ccc;">${custEmail || 'Not provided'}</td>
           </tr>
           <tr>
             <td style="color: #888; vertical-align: top;">Delivery Address:</td>
-            <td style="color: #fff;">${order.customer?.address || 'N/A'}, ${order.customer?.city || ''}</td>
+            <td style="color: #fff;">${custAddress}, ${custCity}</td>
           </tr>
-          ${order.customer?.notes ? `
+          ${custNotes ? `
           <tr>
             <td style="color: #888; vertical-align: top;">Special Note:</td>
-            <td style="color: #fbbf24; font-style: italic;">${order.customer?.notes}</td>
+            <td style="color: #fbbf24; font-style: italic;">${custNotes}</td>
           </tr>` : ''}
         </table>
 
@@ -215,9 +227,9 @@ export async function sendNewOrderEmails(order, settings = {}) {
         <!-- Shipping Address -->
         <div style="background: #141414; border: 1px solid #262626; border-radius: 8px; padding: 14px; font-size: 12px; color: #aaa; margin-bottom: 24px;">
           <strong style="color: #d4af37; text-transform: uppercase; display: block; margin-bottom: 4px;">Shipping Address:</strong>
-          ${order.customer?.fullName}<br/>
-          ${order.customer?.address}, ${order.customer?.city}<br/>
-          Phone: ${order.customer?.phone}
+          ${custName}<br/>
+          ${custAddress}, ${custCity}<br/>
+          Phone: ${custPhone}
         </div>
 
         <!-- Footer Help -->
@@ -262,17 +274,17 @@ export async function sendNewOrderEmails(order, settings = {}) {
     }
 
     // 2. Send Customer Confirmation (if email exists)
-    if (order.customer?.email && order.customer.email.includes('@')) {
+    if (custEmail && custEmail.includes('@')) {
       try {
         const custRes = await transporter.sendMail({
           from: `"${storeName}" <${fromEmail}>`,
-          to: order.customer.email,
+          to: custEmail,
           subject: `✨ Order Confirmed #${order.id || order._id} - ${storeName}`,
           html: customerHtml
         });
         results.customerSent = true;
         results.customerMessageId = custRes.messageId;
-        console.log(`[Email Service] Customer confirmation sent to ${order.customer.email}`);
+        console.log(`[Email Service] Customer confirmation sent to ${custEmail}`);
       } catch (e) {
         results.customerError = e.message;
         console.error(`[Email Service] Failed to send customer email:`, e.message);
@@ -340,8 +352,8 @@ export async function sendOrderStatusUpdateEmail(order, status, extra = {}, sett
 
         <div style="font-size: 13px; color: #bbb; line-height: 1.6;">
           <strong>Order Total:</strong> Rs. ${(order.total || 0).toLocaleString()}<br/>
-          <strong>Customer:</strong> ${order.customer?.fullName || 'N/A'} (${order.customer?.city || ''})<br/>
-          <strong>Phone:</strong> ${order.customer?.phone || 'N/A'}
+          <strong>Customer:</strong> ${order.customer?.fullName || order.customerName || 'Customer'} (${order.customer?.city || order.city || ''})<br/>
+          <strong>Phone:</strong> ${order.customer?.phone || order.phone || 'N/A'}
         </div>
 
         <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #222; text-align: center; font-size: 12px; color: #888;">
@@ -354,8 +366,9 @@ export async function sendOrderStatusUpdateEmail(order, status, extra = {}, sett
   `;
 
   const recipients = [adminEmail];
-  if (order.customer?.email && order.customer.email.includes('@')) {
-    recipients.push(order.customer.email);
+  const custEmail = (order.customer?.email || order.email || '').trim();
+  if (custEmail && custEmail.includes('@') && !recipients.includes(custEmail)) {
+    recipients.push(custEmail);
   }
 
   try {

@@ -50,7 +50,13 @@ export default function App() {
     } catch (e) {}
     return initialProducts;
   });
-  const [orders, setOrders] = useState([]);
+  const [orders, setOrders] = useState(() => {
+    try {
+      const local = JSON.parse(localStorage.getItem('rove_orders') || '[]');
+      if (Array.isArray(local) && local.length > 0) return local;
+    } catch (e) {}
+    return [];
+  });
   const [coupons, setCoupons] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [banners, setBanners] = useState(() => {
@@ -96,6 +102,13 @@ export default function App() {
     localStorage.setItem('rove_cart', JSON.stringify(cartItems));
   }, [cartItems]);
 
+  // Sync orders to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('rove_orders', JSON.stringify(orders));
+    } catch (e) {}
+  }, [orders]);
+
   // Fetch all store data with ultra-fast /api/init bootstrap (Single request ~200ms)
   const fetchData = async () => {
     try {
@@ -133,6 +146,10 @@ export default function App() {
           setBanners(initData.banners);
           try { localStorage.setItem('rove_custom_banners', JSON.stringify(initData.banners)); } catch (e) {}
         }
+        if (Array.isArray(initData.orders)) {
+          setOrders(initData.orders);
+          try { localStorage.setItem('rove_orders', JSON.stringify(initData.orders)); } catch (e) {}
+        }
         if (Array.isArray(initData.reviews)) {
           setReviews(initData.reviews);
         }
@@ -143,13 +160,14 @@ export default function App() {
       }
 
       // 2. Fallback to individual requests if /api/init is not yet available
-      const [resSet, resCat, resProd, resRev, resBan, resDb] = await Promise.all([
+      const [resSet, resCat, resProd, resRev, resBan, resDb, resOrd] = await Promise.all([
         fetch('/api/settings').then(r => r.json()).catch(() => ({})),
         fetch('/api/categories').then(r => r.json()).catch(() => []),
         fetch('/api/products').then(r => r.json()).catch(() => []),
         fetch('/api/reviews').then(r => r.json()).catch(() => []),
         fetch('/api/banners').then(r => r.json()).catch(() => []),
-        fetch('/api/database-status').then(r => r.json()).catch(() => ({ connected: false, type: 'local_json' }))
+        fetch('/api/database-status').then(r => r.json()).catch(() => ({ connected: false, type: 'local_json' })),
+        fetch('/api/orders').then(r => r.json()).catch(() => [])
       ]);
 
       if (resSet && Object.keys(resSet).length > 0) {
@@ -171,6 +189,10 @@ export default function App() {
       if (Array.isArray(resBan) && resBan.length > 0) {
         setBanners(resBan);
         try { localStorage.setItem('rove_custom_banners', JSON.stringify(resBan)); } catch (e) {}
+      }
+      if (Array.isArray(resOrd)) {
+        setOrders(resOrd);
+        try { localStorage.setItem('rove_orders', JSON.stringify(resOrd)); } catch (e) {}
       }
       if (Array.isArray(resRev)) setReviews(resRev);
       if (resDb) setDbStatus(resDb);
@@ -806,6 +828,9 @@ export default function App() {
           cartItems={cartItems}
           onClose={() => setIsCheckoutOpen(false)}
           onOrderSuccess={(createdOrder) => {
+            if (createdOrder) {
+              setOrders(prev => [createdOrder, ...(prev.filter(o => o.id !== createdOrder.id))]);
+            }
             handleClearCart();
             fetchData();
           }}

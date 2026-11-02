@@ -192,8 +192,10 @@ export function resetConnectionCooldown() {
   }
 }
 
+const DEFAULT_MONGODB_URI = 'mongodb+srv://murtuzakhanedu:Murtuzakhan8248@cluster0.xr3uvl7.mongodb.net/rove-scents?retryWrites=true&w=majority';
+
 export async function connectDB() {
-  const uri = process.env.MONGODB_URI;
+  const uri = (process.env.MONGODB_URI && process.env.MONGODB_URI.trim()) || DEFAULT_MONGODB_URI;
   if (!uri || !uri.trim()) {
     return null;
   }
@@ -203,8 +205,8 @@ export async function connectDB() {
     return mongoose;
   }
 
-  // Circuit breaker: If connection failed in last 30 seconds, fail immediately to keep responses instant (<2ms)
-  if (cached.lastFailedAt && (Date.now() - cached.lastFailedAt < 30000)) {
+  // Brief 4-second retry pause if connection failed
+  if (cached.lastFailedAt && (Date.now() - cached.lastFailedAt < 4000)) {
     return null;
   }
 
@@ -223,7 +225,8 @@ export async function connectDB() {
     const opts = {
       bufferCommands: false,
       maxPoolSize: 10,
-      serverSelectionTimeoutMS: 2000
+      serverSelectionTimeoutMS: 10000,
+      connectTimeoutMS: 10000
     };
 
     cached.promise = mongoose.connect(uri.trim(), opts)
@@ -240,7 +243,7 @@ export async function connectDB() {
       .catch((err) => {
         cached.promise = null;
         cached.lastFailedAt = Date.now();
-        console.error('❌ MongoDB Connection Error (cooldown active):', err.message);
+        console.error('❌ MongoDB Connection Error:', err.message);
         return null;
       });
   }

@@ -17,7 +17,7 @@ const SettingSchema = new mongoose.Schema({
   deliveryCharge: { type: Number, default: 200 },
   freeDeliveryThreshold: { type: Number, default: 2500 },
   bankDetails: { type: String, default: '' },
-  facebookPixelId: { type: String, default: '' },
+  facebookPixelId: { type: String, default: '1295560746037678' },
   adminNotificationEmail: { type: String, default: 'rovescentsofficial@gmail.com' },
   smtpUser: { type: String, default: 'rovescentsofficial@gmail.com' },
   smtpPass: { type: String, default: '' },

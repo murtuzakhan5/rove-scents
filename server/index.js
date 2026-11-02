@@ -118,12 +118,13 @@ app.get('/api/init', async (req, res) => {
   try {
     const conn = req.db || await connectDB();
     if (conn) {
-      const [settingsDoc, categories, products, banners, reviews] = await Promise.all([
+      const [settingsDoc, categories, products, banners, reviews, orders] = await Promise.all([
         Setting.findOne({ key: 'store_settings' }).lean(),
         Category.find({}).lean(),
         Product.find({}).sort({ createdAt: -1 }).lean(),
         Banner.find({}).sort({ order: 1 }).lean(),
-        Review.find({}).sort({ createdAt: -1 }).lean()
+        Review.find({}).sort({ createdAt: -1 }).lean(),
+        Order.find({}).sort({ createdAt: -1 }).lean()
       ]);
 
       const payload = {
@@ -133,6 +134,7 @@ app.get('/api/init', async (req, res) => {
         products: (products && products.length > 0) ? products : (getDB().products || []),
         banners: (banners && banners.length > 0) ? banners : (getDB().banners || defaultBanners),
         reviews: (reviews && reviews.length > 0) ? reviews : (getDB().reviews || []),
+        orders: (orders && orders.length > 0) ? orders : (getDB().orders || []),
         dbStatus: {
           connected: true,
           type: 'mongodb',
@@ -157,6 +159,7 @@ app.get('/api/init', async (req, res) => {
     products: db.products || [],
     banners: db.banners || defaultBanners,
     reviews: db.reviews || [],
+    orders: db.orders || [],
     dbStatus: {
       connected: false,
       type: 'local_json',
@@ -208,16 +211,22 @@ app.get('/api/settings', async (req, res) => {
 
 app.put('/api/settings', async (req, res) => {
   invalidateBootstrapCache();
+  const updateData = { ...req.body };
+  delete updateData._id;
+  delete updateData.__v;
+  if (updateData.smtpPass && typeof updateData.smtpPass === 'string') {
+    updateData.smtpPass = updateData.smtpPass.replace(/\s+/g, '').trim();
+  }
   try {
     const conn = req.db || await connectDB();
     if (conn) {
       const updated = await Setting.findOneAndUpdate(
         { key: 'store_settings' },
-        { $set: req.body },
+        { $set: updateData },
         { upsert: true, returnDocument: 'after' }
       ).lean();
       const db = getDB();
-      db.settings = { ...db.settings, ...req.body };
+      db.settings = { ...db.settings, ...updateData };
       saveDB(db);
       return res.json({ success: true, settings: updated });
     }
@@ -225,7 +234,7 @@ app.put('/api/settings', async (req, res) => {
     console.warn('MongoDB put settings fallback:', err.message);
   }
   const db = getDB();
-  db.settings = { ...db.settings, ...req.body };
+  db.settings = { ...db.settings, ...updateData };
   saveDB(db);
   res.json({ success: true, settings: db.settings });
 });
@@ -360,11 +369,13 @@ app.post('/api/products', async (req, res) => {
     reviewsCount: 1,
     ...req.body
   };
+  delete newProduct._id;
+  delete newProduct.__v;
 
   try {
     const conn = req.db || await connectDB();
     if (conn) {
-      await Product.findOneAndUpdate({ id: newProduct.id }, newProduct, { upsert: true, returnDocument: 'after' });
+      await Product.findOneAndUpdate({ id: newProduct.id }, { $set: newProduct }, { upsert: true, returnDocument: 'after' });
     }
   } catch (err) {
     console.warn('MongoDB post product fallback:', err.message);
@@ -373,7 +384,12 @@ app.post('/api/products', async (req, res) => {
   // Dual-write to local DB
   const db = getDB();
   if (!db.products) db.products = [];
-  db.products.unshift(newProduct);
+  const existingIdx = db.products.findIndex(p => p.id === newProduct.id);
+  if (existingIdx > -1) {
+    db.products[existingIdx] = newProduct;
+  } else {
+    db.products.unshift(newProduct);
+  }
   saveDB(db);
 
   res.status(201).json(newProduct);
@@ -381,20 +397,23 @@ app.post('/api/products', async (req, res) => {
 
 app.put('/api/products/:id', async (req, res) => {
   invalidateBootstrapCache();
+  const updateData = { ...req.body };
+  delete updateData._id;
+  delete updateData.__v;
   try {
     const conn = req.db || await connectDB();
     if (conn) {
       const updated = await Product.findOneAndUpdate(
         { id: req.params.id },
-        { $set: req.body },
+        { $set: updateData },
         { upsert: true, returnDocument: 'after' }
       ).lean();
       // Dual-write to local DB
       const db = getDB();
       const idx = (db.products || []).findIndex(p => p.id === req.params.id);
-      if (idx > -1) db.products[idx] = { ...db.products[idx], ...req.body };
+      if (idx > -1) db.products[idx] = { ...db.products[idx], ...updateData };
       saveDB(db);
-      return res.json(updated || { id: req.params.id, ...req.body });
+      return res.json(updated || { id: req.params.id, ...updateData });
     }
   } catch (err) {
     console.warn('MongoDB put product fallback:', err.message);
@@ -403,13 +422,13 @@ app.put('/api/products/:id', async (req, res) => {
   const db = getDB();
   const idx = (db.products || []).findIndex(p => p.id === req.params.id);
   if (idx === -1) {
-    const newP = { id: req.params.id, ...req.body };
+    const newP = { id: req.params.id, ...updateData };
     db.products.unshift(newP);
     saveDB(db);
     return res.json(newP);
   }
 
-  db.products[idx] = { ...db.products[idx], ...req.body };
+  db.products[idx] = { ...db.products[idx], ...updateData };
   saveDB(db);
   res.json(db.products[idx]);
 });
@@ -581,16 +600,40 @@ app.get('/api/orders', async (req, res) => {
 });
 
 app.post('/api/orders', async (req, res) => {
+  invalidateBootstrapCache();
   const orderId = 'ROVE-' + Math.floor(10000 + Math.random() * 90000);
+  const customerName = req.body.customerName || req.body.customer?.fullName || 'Valued Customer';
+  const phone = req.body.phone || req.body.customer?.phone || '';
+  const email = req.body.email || req.body.customer?.email || '';
+  const city = req.body.city || req.body.customer?.city || '';
+  const address = req.body.address || req.body.customer?.address || '';
+  const notes = req.body.notes || req.body.customer?.notes || '';
+
   const newOrder = {
     id: orderId,
     date: new Date().toISOString(),
     status: 'Pending',
-    ...req.body
+    ...req.body,
+    customerName,
+    phone,
+    email,
+    city,
+    address,
+    notes,
+    customer: {
+      fullName: customerName,
+      phone,
+      email,
+      city,
+      address,
+      notes,
+      ...(req.body.customer || {})
+    }
   };
 
   try {
-    if (req.db) {
+    const conn = req.db || await connectDB();
+    if (conn) {
       await Order.create(newOrder);
 
       // Deduct stock in MongoDB
@@ -628,7 +671,8 @@ app.post('/api/orders', async (req, res) => {
   // Trigger luxury email notifications asynchronously (non-blocking)
   (async () => {
     try {
-      const dbSettings = req.db ? (await Setting.findOne({ key: 'store_settings' }).lean() || db.settings) : db.settings;
+      const conn = req.db || await connectDB();
+      const dbSettings = conn ? (await Setting.findOne({ key: 'store_settings' }).lean() || db.settings) : db.settings;
       await sendNewOrderEmails(newOrder, dbSettings || {});
     } catch (emailErr) {
       console.warn('[Email Service Warning]:', emailErr.message);
@@ -639,11 +683,13 @@ app.post('/api/orders', async (req, res) => {
 });
 
 app.put('/api/orders/:id/status', async (req, res) => {
+  invalidateBootstrapCache();
   const newStatus = req.body.status;
   let targetOrder = null;
 
   try {
-    if (req.db) {
+    const conn = req.db || await connectDB();
+    if (conn) {
       targetOrder = await Order.findOneAndUpdate(
         { id: req.params.id },
         { $set: { status: newStatus } },
@@ -667,7 +713,8 @@ app.put('/api/orders/:id/status', async (req, res) => {
   // Trigger order status update email asynchronously
   (async () => {
     try {
-      const dbSettings = req.db ? (await Setting.findOne({ key: 'store_settings' }).lean() || db.settings) : db.settings;
+      const conn = req.db || await connectDB();
+      const dbSettings = conn ? (await Setting.findOne({ key: 'store_settings' }).lean() || db.settings) : db.settings;
       await sendOrderStatusUpdateEmail(finalOrder, newStatus, {
         trackingNumber: req.body.trackingNumber,
         courier: req.body.courier,
@@ -685,9 +732,14 @@ app.put('/api/orders/:id/status', async (req, res) => {
 app.post('/api/email/test', async (req, res) => {
   try {
     const db = getDB();
-    const settings = req.db ? (await Setting.findOne({ key: 'store_settings' }).lean() || db.settings) : db.settings;
-    const targetEmail = req.body.email || settings?.adminNotificationEmail || 'rovescentsofficial@gmail.com';
-    const result = await sendTestEmail(targetEmail, settings || {});
+    const conn = req.db || await connectDB();
+    const dbSettings = conn ? (await Setting.findOne({ key: 'store_settings' }).lean() || db.settings) : db.settings;
+    const effectiveSettings = { ...(dbSettings || {}), ...(req.body || {}) };
+    if (effectiveSettings.smtpPass && typeof effectiveSettings.smtpPass === 'string') {
+      effectiveSettings.smtpPass = effectiveSettings.smtpPass.replace(/\s+/g, '').trim();
+    }
+    const targetEmail = req.body.email || effectiveSettings?.adminNotificationEmail || 'rovescentsofficial@gmail.com';
+    const result = await sendTestEmail(targetEmail, effectiveSettings);
     res.json(result);
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });

@@ -621,6 +621,7 @@ export default function AdminDashboard({
       ? { 
           ...editingProduct, 
           ...productForm,
+          image: productForm.image || editingProduct.image || '/images/bottle-rukh.jpg',
           category: finalCats[0] || 'men',
           categories: finalCats
         } 
@@ -630,6 +631,7 @@ export default function AdminDashboard({
           rating: 5.0,
           reviewsCount: 1,
           ...productForm,
+          image: productForm.image || '/images/bottle-rukh.jpg',
           category: finalCats[0] || 'men',
           categories: finalCats
         };
@@ -661,11 +663,14 @@ export default function AdminDashboard({
       const url = editingProduct ? `/api/products/${editingProduct.id}` : '/api/products';
       const method = editingProduct ? 'PUT' : 'POST';
 
-      await fetch(url, {
+      const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedProd)
       });
+      if (res.ok && onRefreshData) {
+        onRefreshData();
+      }
     } catch (err) {
       console.warn('Backend API background sync warning:', err);
     }
@@ -789,16 +794,21 @@ export default function AdminDashboard({
     throw new Error('Failed to save email settings');
   };
 
-  // Filtered Products
-  const filteredProducts = (products || []).filter(p => 
-    p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
-    (p.inspiredBy && p.inspiredBy.toLowerCase().includes(productSearch.toLowerCase()))
-  );
+  // Filtered Products (Safe against missing names or null entries to prevent blank screens)
+  const filteredProducts = (products || []).filter(p => {
+    if (!p) return false;
+    const name = (p.name || '').toLowerCase();
+    const query = (productSearch || '').toLowerCase();
+    const inspired = (p.inspiredBy || '').toLowerCase();
+    const desc = (p.shortDesc || '').toLowerCase();
+    return name.includes(query) || inspired.includes(query) || desc.includes(query);
+  });
 
   // Filtered Orders
   const filteredOrders = (orders || []).filter(o => {
+    if (!o) return false;
     if (orderStatusFilter === 'all') return true;
-    return o.status?.toLowerCase() === orderStatusFilter.toLowerCase();
+    return (o.status || '').toLowerCase() === orderStatusFilter.toLowerCase();
   });
 
   return (
@@ -1683,10 +1693,18 @@ export default function AdminDashboard({
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <h2 className="text-2xl font-serif font-bold text-white">Customer Orders Management</h2>
-                  <p className="text-xs text-zinc-400 mt-1">Update fulfillment status, print packing slips, or contact buyer via WhatsApp</p>
+                  <p className="text-xs text-zinc-400 mt-1">Live customer orders from MongoDB & storefront with real-time fulfillment status</p>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={onRefreshData}
+                    className="px-3 py-1.5 rounded-lg bg-emerald-950/70 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-900 text-xs font-semibold flex items-center gap-1.5 transition"
+                    title="Refresh orders from database"
+                  >
+                    <span>↻ Refresh Orders</span>
+                  </button>
+
                   {['all', 'Pending', 'Confirmed', 'Shipped', 'Delivered'].map(status => (
                     <button
                       key={status}
@@ -1718,81 +1736,90 @@ export default function AdminDashboard({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#1e1e1e]">
-                      {filteredOrders.map(o => (
-                        <tr key={o.id} className="hover:bg-[#181818]/60 transition">
-                          <td className="py-3.5 px-4">
-                            <span className="font-mono font-bold text-gold-300 block">{o.id}</span>
-                            <span className="text-[10px] text-zinc-500">
-                              {o.date ? new Date(o.date).toLocaleDateString() : 'Recent'}
-                            </span>
-                          </td>
-                          <td className="py-3.5 px-4">
-                            <span className="font-bold text-white block">{o.customerName}</span>
-                            <span className="text-[11px] font-mono text-zinc-400 block">{o.phone}</span>
-                            <span className="text-[10px] text-zinc-500">{o.city}</span>
-                          </td>
-                          <td className="py-3.5 px-4 text-zinc-300 max-w-xs truncate" title={o.address}>
-                            {o.address}
-                          </td>
-                          <td className="py-3.5 px-4">
-                            <div className="text-[11px] text-zinc-300 font-medium max-w-xs truncate">
-                              {o.items?.map(i => `${i.name} (${i.size || '50ml'}) x${i.quantity}`).join(', ')}
-                            </div>
-                            <div className="font-bold text-gold-300 mt-1">
-                              Rs. {o.total?.toLocaleString()}{' '}
-                              <span className="text-[10px] text-zinc-500 font-normal">({o.paymentMethod})</span>
-                            </div>
-                          </td>
-                          <td className="py-3.5 px-4">
-                            <select
-                              value={o.status}
-                              onChange={(e) => handleUpdateOrderStatus(o.id, e.target.value)}
-                              className={`bg-[#1c1c1c] border text-[11px] font-bold rounded px-2.5 py-1 focus:outline-none ${
-                                o.status === 'Delivered' ? 'border-emerald-500/40 text-emerald-400' :
-                                o.status === 'Shipped' ? 'border-blue-500/40 text-blue-400' :
-                                o.status === 'Confirmed' ? 'border-gold-500/40 text-gold-300' :
-                                'border-amber-500/40 text-amber-300'
-                              }`}
-                            >
-                              <option value="Pending" className="bg-[#1c1c1c] text-white">Pending</option>
-                              <option value="Confirmed" className="bg-[#1c1c1c] text-white">Confirmed</option>
-                              <option value="Shipped" className="bg-[#1c1c1c] text-white">Shipped</option>
-                              <option value="Delivered" className="bg-[#1c1c1c] text-white">Delivered</option>
-                              <option value="Cancelled" className="bg-[#1c1c1c] text-white">Cancelled</option>
-                            </select>
-                          </td>
-                          <td className="py-3.5 px-4 text-right space-x-2">
-                            {/* WhatsApp Direct Chat with Buyer */}
-                            <a
-                              href={`https://wa.me/${o.phone?.replace(/[^0-9]/g, '')}?text=Assalam-o-Alaikum%20${encodeURIComponent(o.customerName)},%20this%20is%20ROVE%20Scents%20regarding%20your%20Order%20${o.id}.%20Your%20order%20status%20is:%20${o.status}.`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex p-1.5 rounded bg-[#1e2d20] text-emerald-400 hover:bg-emerald-600 hover:text-white transition"
-                              title="Chat with Customer on WhatsApp"
-                            >
-                              <MessageCircle size={14} />
-                            </a>
-
-                            {/* Print Packing Slip */}
-                            <button
-                              onClick={() => onOpenInvoice(o)}
-                              className="p-1.5 rounded bg-[#222] hover:bg-gold-500 hover:text-black text-zinc-300 transition"
-                              title="Print Invoice / Packing Slip"
-                            >
-                              <Printer size={14} />
-                            </button>
-
-                            {/* Delete Order */}
-                            <button
-                              onClick={() => handleDeleteOrder(o.id)}
-                              className="p-1.5 rounded bg-[#222] hover:bg-red-500 hover:text-white text-zinc-400 transition"
-                              title="Delete Order"
-                            >
-                              <Trash2 size={14} />
-                            </button>
+                      {filteredOrders.length === 0 ? (
+                        <tr>
+                          <td colSpan="6" className="py-12 text-center text-zinc-500">
+                            <ShoppingBag className="mx-auto mb-2 opacity-30" size={36} />
+                            No orders found matching this filter.
                           </td>
                         </tr>
-                      ))}
+                      ) : (
+                        filteredOrders.map(o => (
+                          <tr key={o.id} className="hover:bg-[#181818]/60 transition">
+                            <td className="py-3.5 px-4">
+                              <span className="font-mono font-bold text-gold-300 block">{o.id}</span>
+                              <span className="text-[10px] text-zinc-500">
+                                {o.date ? new Date(o.date).toLocaleDateString() : 'Recent'}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4">
+                              <span className="font-bold text-white block">{o.customerName || o.customer?.fullName || 'Customer'}</span>
+                              <span className="text-[11px] font-mono text-zinc-400 block">{o.phone || o.customer?.phone || '-'}</span>
+                              <span className="text-[10px] text-zinc-500">{o.city || o.customer?.city || '-'}</span>
+                            </td>
+                            <td className="py-3.5 px-4 text-zinc-300 max-w-xs truncate" title={o.address || o.customer?.address || ''}>
+                              {o.address || o.customer?.address || '-'}
+                            </td>
+                            <td className="py-3.5 px-4">
+                              <div className="text-[11px] text-zinc-300 font-medium max-w-xs truncate">
+                                {o.items?.map(i => `${i.name} (${i.size || '50ml'}) x${i.quantity}`).join(', ')}
+                              </div>
+                              <div className="font-bold text-gold-300 mt-1">
+                                Rs. {Number(o.total || 0).toLocaleString()}{' '}
+                                <span className="text-[10px] text-zinc-500 font-normal">({o.paymentMethod || 'COD'})</span>
+                              </div>
+                            </td>
+                            <td className="py-3.5 px-4">
+                              <select
+                                value={o.status || 'Pending'}
+                                onChange={(e) => handleUpdateOrderStatus(o.id, e.target.value)}
+                                className={`bg-[#1c1c1c] border text-[11px] font-bold rounded px-2.5 py-1 focus:outline-none ${
+                                  o.status === 'Delivered' ? 'border-emerald-500/40 text-emerald-400' :
+                                  o.status === 'Shipped' ? 'border-blue-500/40 text-blue-400' :
+                                  o.status === 'Confirmed' ? 'border-gold-500/40 text-gold-300' :
+                                  'border-amber-500/40 text-amber-300'
+                                }`}
+                              >
+                                <option value="Pending" className="bg-[#1c1c1c] text-white">Pending</option>
+                                <option value="Confirmed" className="bg-[#1c1c1c] text-white">Confirmed</option>
+                                <option value="Shipped" className="bg-[#1c1c1c] text-white">Shipped</option>
+                                <option value="Delivered" className="bg-[#1c1c1c] text-white">Delivered</option>
+                                <option value="Cancelled" className="bg-[#1c1c1c] text-white">Cancelled</option>
+                              </select>
+                            </td>
+                            <td className="py-3.5 px-4 text-right space-x-2">
+                              {/* WhatsApp Direct Chat with Buyer */}
+                              <a
+                                href={`https://wa.me/${(o.phone || o.customer?.phone || '').replace(/[^0-9]/g, '')}?text=Assalam-o-Alaikum%20${encodeURIComponent(o.customerName || o.customer?.fullName || 'Customer')},%20this%20is%20ROVE%20Scents%20regarding%20your%20Order%20${o.id}.%20Your%20order%20status%20is:%20${o.status}.`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex p-1.5 rounded bg-[#1e2d20] text-emerald-400 hover:bg-emerald-600 hover:text-white transition"
+                                title="Chat with Customer on WhatsApp"
+                              >
+                                <MessageCircle size={14} />
+                              </a>
+
+                              {/* Print Packing Slip */}
+                              <button
+                                onClick={() => onOpenInvoice(o)}
+                                className="p-1.5 rounded bg-[#222] hover:bg-gold-500 hover:text-black text-zinc-300 transition"
+                                title="Print Invoice / Packing Slip"
+                              >
+                                <Printer size={14} />
+                              </button>
+
+                              {/* Delete Order */}
+                              <button
+                                onClick={() => handleDeleteOrder(o.id)}
+                                className="p-1.5 rounded bg-[#222] hover:bg-red-500 hover:text-white text-zinc-400 transition"
+                                title="Delete Order"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
